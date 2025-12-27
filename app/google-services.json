@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "331557509146",
+    "firebase_url": "https://did25-d300d-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "did25-d300d",
+    "storage_bucket": "did25-d300d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:331557509146:android:33a11eba3c2dee35a0d9a3",
+        "android_client_info": {
+          "package_name": "com.example.ricarica"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_XxYrP2MOcjXpcqSkzzL9nKD7LcI408U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
