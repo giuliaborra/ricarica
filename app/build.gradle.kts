@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.firebase.database)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
     implementation("com.google.android.gms:play-services-maps:19.2.0")
     implementation("com.google.maps.android:maps-compose:4.3.3")
