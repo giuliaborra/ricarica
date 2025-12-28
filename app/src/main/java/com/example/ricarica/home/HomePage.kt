@@ -1,4 +1,5 @@
 package com.example.ricarica.home
+import MapViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,9 +22,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.ricarica.MapView
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ricarica.map.MapView
 
 
 
@@ -31,6 +32,7 @@ import com.example.ricarica.MapView
 fun HomePage(viewModel: HomeViewModel) {
 
     val stations = viewModel.stationList.value
+    val mapVm: MapViewModel = viewModel()
 
     Column(modifier = Modifier.fillMaxSize()) {
         // 1. AREA DELLA MAPPA (3/4 dello schermo)
@@ -42,7 +44,9 @@ fun HomePage(viewModel: HomeViewModel) {
                 .background(Color.LightGray), // Colore di sfondo per renderlo visibile
             contentAlignment = Alignment.Center
         ) {
-            MapView(stations = stations)
+            MapView(
+                vm = mapVm,
+                stations = stations)
         }
 
         // 2. LA BARRA INFERIORE (1/4 dello schermo)
@@ -81,7 +85,7 @@ fun BottomBarWithButtons (modifier: Modifier = Modifier) {
             ) {
 
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Azione 1", fontWeight = FontWeight.Bold)
+                Text("catalogo", fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.width(16.dp)) // Spazio tra i bottoni
@@ -94,7 +98,7 @@ fun BottomBarWithButtons (modifier: Modifier = Modifier) {
                     .height(50.dp)
             ) {
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Azione 2", fontWeight = FontWeight.Bold)
+                Text("profilo", fontWeight = FontWeight.Bold)
             }
         }
     }

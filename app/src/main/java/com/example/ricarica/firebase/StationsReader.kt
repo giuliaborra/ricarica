@@ -16,6 +16,7 @@ fun observeStations (
     val listener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
             val stations = snapshot.children.mapNotNull { stSnap ->
+                //in ID mi salva la chiave del mio nodo quindi st_01 / st_02 ecc...
                 val id = stSnap.key ?: return@mapNotNull null
                 val station = stSnap.getValue(Station::class.java) ?: return@mapNotNull null
                 StationItem(id = id, station = station)
