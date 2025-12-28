@@ -58,6 +58,13 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.compose.material:material-icons-extended:1.6.8")
 
+    val navVersion = "2.8.3"
+    implementation("androidx.navigation:navigation-fragment-ktx:${navVersion}")
+    implementation("androidx.navigation:navigation-ui-ktx:${navVersion}")
+
+    // Jetpack Compose Integration
+    implementation("androidx.navigation:navigation-compose:${navVersion}")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

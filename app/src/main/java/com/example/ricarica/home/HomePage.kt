@@ -29,7 +29,10 @@ import com.example.ricarica.map.MapView
 
 
 @Composable
-fun HomePage(viewModel: HomeViewModel) {
+fun HomePage(
+    viewModel: HomeViewModel,
+    onCatalogClick: () -> Unit
+) {
 
     val stations = viewModel.stationList.value
     val mapVm: MapViewModel = viewModel()
@@ -51,6 +54,7 @@ fun HomePage(viewModel: HomeViewModel) {
 
         // 2. LA BARRA INFERIORE (1/4 dello schermo)
         BottomBarWithButtons(
+            onCatalogClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f) // <-- DICE A QUESTA BARRA DI PRENDERE 1 PARTE DELLO SPAZIO
@@ -60,7 +64,10 @@ fun HomePage(viewModel: HomeViewModel) {
 }
 
 @Composable
-fun BottomBarWithButtons (modifier: Modifier = Modifier) {
+fun BottomBarWithButtons (
+    onCatalogClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
         modifier = modifier,
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
@@ -78,7 +85,7 @@ fun BottomBarWithButtons (modifier: Modifier = Modifier) {
 
             // Bottone 1 ==> navigo nella pagina catalogo
             Button(
-                onClick = { },
+                onClick = {onCatalogClick},
                 modifier = Modifier
                     .weight(1f) // Ogni bottone occupa la stessa larghezza
                     .height(50.dp)
