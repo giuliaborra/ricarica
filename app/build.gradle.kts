@@ -57,6 +57,7 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:4.3.3")
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.compose.material:material-icons-extended:1.6.8")
+    implementation(libs.androidx.material3)
 
     val navVersion = "2.8.3"
     implementation("androidx.navigation:navigation-fragment-ktx:${navVersion}")

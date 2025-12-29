@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.rememberNavController
 import com.example.ricarica.map.MapView
 
 
@@ -31,7 +32,7 @@ import com.example.ricarica.map.MapView
 @Composable
 fun HomePage(
     viewModel: HomeViewModel,
-    onCatalogClick: () -> Unit
+
 ) {
 
     val stations = viewModel.stationList.value
@@ -53,60 +54,14 @@ fun HomePage(
         }
 
         // 2. LA BARRA INFERIORE (1/4 dello schermo)
+        /*
         BottomBarWithButtons(
             onCatalogClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f) // <-- DICE A QUESTA BARRA DI PRENDERE 1 PARTE DELLO SPAZIO
-        )
+        )*/
 
     }
 }
 
-@Composable
-fun BottomBarWithButtons (
-    onCatalogClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        shape = MaterialTheme.shapes.extraSmall // Bordi non arrotondati
-    ) {
-        // La Row dispone i bottoni orizzontalmente.
-        Row(
-            modifier = Modifier
-                .fillMaxSize() // Occupa tutto lo spazio dato dal weight(1f)
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceAround, // Distribuisce lo spazio equamente
-            verticalAlignment = Alignment.CenterVertically // Centra i bottoni verticalmente
-        ) {
-
-
-            // Bottone 1 ==> navigo nella pagina catalogo
-            Button(
-                onClick = {onCatalogClick},
-                modifier = Modifier
-                    .weight(1f) // Ogni bottone occupa la stessa larghezza
-                    .height(50.dp)
-            ) {
-
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("catalogo", fontWeight = FontWeight.Bold)
-            }
-
-            Spacer(modifier = Modifier.width(16.dp)) // Spazio tra i bottoni
-
-            // Bottone 2 ==> navigo nella pagine profilo
-            OutlinedButton( // Usiamo un tipo diverso per varietà
-                onClick = { },
-                modifier = Modifier
-                    .weight(1f) // Ogni bottone occupa la stessa larghezza
-                    .height(50.dp)
-            ) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("profilo", fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}

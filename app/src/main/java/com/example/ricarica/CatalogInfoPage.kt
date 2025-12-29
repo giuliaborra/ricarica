@@ -10,12 +10,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.example.ricarica.home.HomeViewModel
 
 @Composable
 fun CatalogPage(
     viewModel: HomeViewModel,
-    onBack: () -> Unit
+    thisnavController: NavController
+
 ) {
     // Temporaneo: lista finta
     val powerbanks = listOf(
@@ -24,9 +26,14 @@ fun CatalogPage(
         "RicaRica PRO"
     )
 
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        TextButton(onClick = onBack) { Text("Indietro") }
-
+    Column(Modifier
+        .fillMaxSize()
+        .padding(16.dp)) {
+        TextButton(
+            onClick = { thisnavController.popBackStack("home", false) }
+        ) {
+            Text("Indietro")
+        }
         Spacer(Modifier.height(8.dp))
         Text("Catalogo PowerBank")
 
