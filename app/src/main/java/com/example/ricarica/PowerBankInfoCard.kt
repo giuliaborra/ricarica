@@ -23,7 +23,8 @@ fun InfoCardPB(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(120.dp), // altezza fissa uguale per tutte
+            .height(120.dp)
+            .padding(10.dp), // altezza fissa uguale per tutte
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {

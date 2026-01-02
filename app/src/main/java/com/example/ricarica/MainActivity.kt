@@ -77,10 +77,11 @@ fun SomeApp() {
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            onCatalogClick = {
-                navController.navigate("catalog")
-            },
-            onProfileClick = { navController.navigate("profile") }
+            onCatalogClick = {navController.navigate("catalog") },
+            onProfileClick = {navController.navigate("profile") },
+
+            //GESTIONE LETTURA DEL QR CODE
+            onQRClick = {}
         )
     }
 }
@@ -88,7 +89,8 @@ fun SomeApp() {
 fun BottomBarWithButtons(
     modifier: Modifier = Modifier,
     onCatalogClick: () -> Unit,
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    onQRClick: () -> Unit
 ) {
     Card(
         modifier = modifier,
@@ -115,6 +117,17 @@ fun BottomBarWithButtons(
                 ) {
                     Text("Catalogo")
                 }
+
+                OutlinedButton(
+                    onClick = onQRClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                ) {
+                    Text("QRCODE")
+                }
+
+
 
                 OutlinedButton(
                     onClick = onProfileClick,
