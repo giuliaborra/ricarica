@@ -1,6 +1,7 @@
 package com.example.ricarica
 
 import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.flow.asStateFlow
 
 sealed class AuthState {
     data object Loading : AuthState()
