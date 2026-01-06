@@ -1,33 +1,20 @@
 package com.example.ricarica
+import LoginPage
 import ProfileInfoPage
+import RegisterPage
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,8 +23,7 @@ import com.example.ricarica.home.HomePage
 import com.example.ricarica.home.HomeViewModel
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import com.example.ricarica.profile.AuthViewModel
 import com.example.ricarica.ui.theme.RicaricaTheme
 
 
@@ -58,13 +44,15 @@ class MainActivity : ComponentActivity() {
 fun SomeApp() {
 
     val navController = rememberNavController()
-    val viewModel: HomeViewModel = viewModel()
+    val homeViewModel: HomeViewModel = viewModel()
+    val authViewModel : AuthViewModel = viewModel ()
 
     val auth = remember { FirebaseAuth.getInstance() }
     var isLoggedIn by remember { mutableStateOf(auth.currentUser != null) }
-    var showLoginPopup by remember { mutableStateOf(false) }
 
-    // ascolta cambiameninPti login/logout
+
+    //ascolta cambiamenti login/logout
+
     DisposableEffect(Unit) {
         val listener = FirebaseAuth.AuthStateListener { fb ->
             isLoggedIn = fb.currentUser != null
@@ -74,8 +62,6 @@ fun SomeApp() {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-
-        // 3/4 SCHERMO → CONTENUTO (HOME / CATALOGO)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -87,140 +73,34 @@ fun SomeApp() {
             )
             {
 
-                composable("home") { HomePage(viewModel = viewModel) }
-                composable("catalog") { CatalogPage(viewModel = viewModel, navController) }
-                composable ("profile" ) { ProfileInfoPage (navController) }
+                composable("home") { HomePage(viewModel = homeViewModel, navController, isLoggedIn) }
+                composable("catalog") { CatalogPage(viewModel = homeViewModel, navController) }
+                composable ("profile" ) { ProfileInfoPage (authViewModel, navController) }
 
-                //AGGIUNGO PAGINA DI LOGIN
-                composable ( "login") {}
+                //Pagina per effettuare il login
+                composable ( "login") {
+                    LoginPage(
+                        authViewModel,
+                        {navController.navigate("profile")},
+                        {navController.navigate("home")}
 
-                //AGGIUNGO PAGINA DI REGISTRAZIONE
-                composable("register") {  }
-            }
-        }
-
-        //POP U
-
-        if (showLoginPopup) {
-            AlertDialog(
-                onDismissRequest = { showLoginPopup = false },
-                title = { Text("Accesso richiesto") },
-                text = { Text("Per vedere il profilo devi accedere o registrarti.") },
-                confirmButton = {
-                    Button(onClick = {
-                        showLoginPopup = false
-                        navController.navigate("login")
-                    }) { Text("Accedi") }
-                },
-                dismissButton = {
-                    OutlinedButton(onClick = {
-                        showLoginPopup = false
-                        navController.navigate("register")
-                    }) { Text("Registrati") }
-                }
-            )
-        }
-
-
-
-
-
-        // 1/4 SCHERMO → BOTTOM BAR PERSISTENTE
-        BottomBarWithButtons(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            onCatalogClick = {navController.navigate("catalog") },
-            onProfileClick = {
-
-                if (isLoggedIn) {
-
-                    navController.navigate("profile")
-                } else {
-                    showLoginPopup = true } },
-
-            //GESTIONE LETTURA DEL QR CODE
-            onQRClick = {}
-        )
-    }
-}
-@Composable
-fun BottomBarWithButtons(
-    modifier: Modifier = Modifier,
-    onCatalogClick: () -> Unit,
-    onProfileClick: () -> Unit,
-    onQRClick: () -> Unit
-) {
-    Card(
-        modifier = modifier,
-        // Usiamo l'elevazione per dare profondità come su Figma
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        // Colleghiamo il colore della Card al 'primary' del tuo Theme.kt
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary
-        ),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center // Centriamo il contenuto
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // BOTTONE CATALOGO
-                Button(
-                    onClick = onCatalogClick,
-                    modifier = Modifier.weight(1f).height(52.dp),
-                    // Usiamo il colore onPrimary per il contrasto (testo bianco su verde)
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent // Resta integrato nella barra
-                    )
-                ) {
-                    Text(
-                        text = "Catalogo",
-                        style = MaterialTheme.typography.labelSmall // Collega a Type.kt
                     )
                 }
 
-                // BOTTONE QRCODE (Il pezzo forte)
-                Button(
-                    onClick = onQRClick,
-                    modifier = Modifier.weight(1f).height(52.dp),
-                    // Usiamo il 'secondary' (verde chiaro) per evidenziarlo
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = Color.White
-                    ),
-                    shape = CircleShape // Lo rendiamo tondo come su Figma
-                ) {
-                    Text(
-                        text = "QRCODE",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                //pagina per registrare un utente
+                composable("register") {
+                    RegisterPage(
+                        authViewModel,
+                        {navController.navigate("profile")},
+                        {navController.navigate("home")}
 
-                // BOTTONE PROFILO
-                Button(
-                    onClick = onProfileClick,
-                    modifier = Modifier.weight(1f).height(52.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.Transparent
-                    )
-                ) {
-                    Text(
-                        text = "Profilo",
-                        style = MaterialTheme.typography.labelSmall
                     )
                 }
             }
         }
     }
 }
+
 
 
 

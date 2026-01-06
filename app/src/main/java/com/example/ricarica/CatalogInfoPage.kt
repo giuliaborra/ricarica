@@ -55,7 +55,7 @@ fun CatalogPage(
     ) {
 
         CatalogTopBar(
-            onBack = { navController.popBackStack("home", false) }
+            onBack = { navController.navigate("home") }
         )
 
         LazyColumn(
