@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -25,8 +26,14 @@ fun InfoCardPB(
             .fillMaxWidth()
             .height(120.dp)
             .padding(10.dp), // altezza fissa uguale per tutte
+
         shape = MaterialTheme.shapes.large,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White // Forza lo sfondo della card ad essere bianco
+                )
+
     ) {
         Column(
             modifier = Modifier
@@ -37,7 +44,8 @@ fun InfoCardPB(
             Text(
                 text = powerBank.title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black
             )
 
 
