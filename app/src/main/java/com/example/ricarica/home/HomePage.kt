@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.ricarica.map.MapView
+import com.example.ricarica.rental.Rental
 
 
 @Composable
@@ -32,8 +33,11 @@ fun HomePage(
 ) {
     val stations = viewModel.stationList.value
     val mapVm: MapViewModel = viewModel()
-
     var showLoginPopup by remember { mutableStateOf(false) }
+
+    var activeRental by remember { mutableStateOf<Rental?>(null) }
+
+
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -45,6 +49,15 @@ fun HomePage(
             contentAlignment = Alignment.Center
         ) {
             MapView(vm = mapVm, stations = stations)
+        }
+
+        if(activeRental!=null) {
+            RentalBottomBar(
+                rental = activeRental!!,
+                onTimerExpired = {activeRental = null}
+
+            )
+
         }
 
         BottomBarWithButtons(

@@ -1,7 +1,11 @@
 package com.example.ricarica.profile
 
 import androidx.lifecycle.ViewModel
+import com.example.ricarica.rental.Rental
+import com.example.ricarica.dati.UserProfile
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.auth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.DataSnapshot
@@ -15,12 +19,7 @@ sealed class AuthState {
     data class LoggedIn(val uid: String) : AuthState()
 }
 
-data class UserProfile(
-    val uid: String = "",
-    val email: String = "",
-    val createdAt: Long = 0L,
-    val userName: String = ""
-)
+
 
 class AuthViewModel : ViewModel() {
 
@@ -36,7 +35,9 @@ class AuthViewModel : ViewModel() {
     private var profileListener: ValueEventListener? = null
 
     init {
+
         auth.addAuthStateListener { fb ->
+
             val user = fb.currentUser
             if (user == null) {
                 detachProfileListener()
@@ -64,6 +65,7 @@ class AuthViewModel : ViewModel() {
         email: String,
         password: String,
         username: String = "",
+        rentals: Map<String, Rental> = emptyMap(),
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -79,7 +81,8 @@ class AuthViewModel : ViewModel() {
                     uid = uid,
                     email = email,
                     userName = username,
-                    createdAt = System.currentTimeMillis()
+                    rentals = rentals,
+                    createdAt = System.currentTimeMillis(),
                 )
 
                 // Scrivo in Realtime Database: /users/{uid}
@@ -104,12 +107,16 @@ class AuthViewModel : ViewModel() {
         val ref = db.child("users").child(uid)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                if (!snapshot.exists()) {
+                    // IL PROFILO NON ESISTE PIÙ NEL DB
+                    // Se l'utente è loggato in Auth ma non c'è nel DB, forziamo il logout
+                    signOut()
+                    return
+                }
                 _userProfile.value = snapshot.getValue(UserProfile::class.java)
             }
 
-            override fun onCancelled(error: DatabaseError) {
-                // se vuoi puoi esporre un errore UI
-            }
+            override fun onCancelled(error: DatabaseError) { }
         }
         ref.addValueEventListener(listener)
         profileListener = listener
@@ -120,5 +127,11 @@ class AuthViewModel : ViewModel() {
         val listener = profileListener ?: return
         if (uid != null) db.child("users").child(uid).removeEventListener(listener)
         profileListener = null
+    }
+
+    // Nel tuo ViewModel che gestisce l'autenticazione
+    fun forceLogout() {
+        Firebase.auth.signOut()
+
     }
 }

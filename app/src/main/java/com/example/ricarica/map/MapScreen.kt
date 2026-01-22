@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetScaffoldState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -64,7 +62,8 @@ fun MapView(
             if (selectedStation != null) {
                 StationInfoCard(
                     station = selectedStation,
-                    isExpanded = isExpanded
+                    onRentalSuccess = {}
+
                 )
             } else {
                 // Contenuto vuoto per evitare crash quando non c'è selezione

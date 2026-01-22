@@ -77,7 +77,7 @@ fun BottomBarWithButtons(
                     shape = CircleShape // Lo rendiamo tondo come su Figma
                 ) {
                     Text(
-                        text = "QRCODE",
+                        text = "COLLEGA",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
                     )

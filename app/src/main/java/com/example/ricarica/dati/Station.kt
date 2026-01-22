@@ -1,5 +1,6 @@
 package com.example.ricarica.data.model
 import com.example.ricarica.dati.Locker
+import com.example.ricarica.rental.Rental
 
 data class StationItem(
     val id: String,
@@ -10,7 +11,9 @@ data class Station(
     val enabled: Boolean = true,
     val name: String = "",
     val position: Position? = null,
-    val lockers: Map<String, Locker> = emptyMap()
+    val lockers: Map<String, Locker> = emptyMap(),
+    val rentals: Map<String, Rental> = emptyMap()
+
 )
 
 data class Position (

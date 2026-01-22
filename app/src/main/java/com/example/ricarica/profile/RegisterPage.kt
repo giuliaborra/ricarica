@@ -1,6 +1,7 @@
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.example.ricarica.rental.Rental
 import com.example.ricarica.profile.AuthViewModel
 
 @Composable
@@ -12,7 +13,9 @@ fun RegisterPage(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
+    var rentals by remember { mutableStateOf(emptyMap<String,Rental>()) }
     var error by remember { mutableStateOf<String?>(null) }
+
 
     Column {
         Text("Registrazione")
@@ -29,6 +32,7 @@ fun RegisterPage(
                 email = email,
                 password = password,
                 username = username,
+                rentals = rentals,
                 onSuccess = onSuccess,
                 onError = { msg -> error = msg }
             )
