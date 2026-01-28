@@ -36,9 +36,9 @@ fun CatalogPage(
 
     val typeOfPowerBank: List<PowerBank> = listOf(
 
-        PowerBank.Basic,
-        PowerBank.Fast,
-        PowerBank.Pro
+        PowerBank.BASIC,
+        PowerBank.FAST,
+        PowerBank.PRO
 
     )
 

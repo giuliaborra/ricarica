@@ -16,6 +16,16 @@ import com.example.ricarica.data.model.StationItem
 import com.example.ricarica.rental.Rental
 import com.example.ricarica.rental.RentalViewModel // Assicurati che il package sia giusto
 import PowerBank // La tua sealed class
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.Input
+import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.BatteryStd
+import androidx.compose.material.icons.filled.Input
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.viewModelScope
 
 // 1. Definiamo gli stati per sicurezza (se non li hai in un altro file Utils)
 object LockerStatus {
@@ -28,7 +38,7 @@ object LockerStatus {
 @Composable
 fun StationInfoCard(
     station: StationItem,
-    //isExpanded: Boolean,
+    isExpanded: Boolean,
     rentalViewModel: RentalViewModel = viewModel(),
     onRentalSuccess: (Rental) -> Unit // <--- Callback per avvisare la Home
 ) {
@@ -37,31 +47,15 @@ fun StationInfoCard(
 
     // CALCOLO DINAMICO DELLE DISPONIBILITÀ (Reattivo al DB)
     // Ogni volta che 'station' cambia (aggiornamento Firebase), questo blocco viene rieseguito.
-    val counts = remember(station) {
-        val lockers = station.station.lockers.values
+    // ELIMINA IL REMEMBER. Scrivi solo questo:
+    val lockers = station.station.lockers.values
+    val counts: Map<String, Int> = mapOf(
+        "BASIC" to lockers.count { it.state == "OCCUPIED" && it.type == "BASIC" },
+        "FAST" to lockers.count { it.state == "OCCUPIED" && it.type == "FAST" },
+        "PRO" to lockers.count { it.state == "OCCUPIED" && it.type == "PRO" }
+    )
 
-        // Regola d'oro: È disponibile SOLO se è "OCCUPIED" (cioè c'è il PB dentro ed è libero)
-        val basicCount = lockers.count {
-            it.type?.contains("Basic", ignoreCase = true) == true &&
-                    (it.state == LockerStatus.OCCUPIED)
-        }
 
-        val fastCount = lockers.count {
-            it.type?.contains("Fast", ignoreCase = true) == true &&
-                    it.state == LockerStatus.OCCUPIED
-        }
-
-        val proCount = lockers.count {
-            it.type?.contains("Pro", ignoreCase = true) == true &&
-                    it.state == LockerStatus.OCCUPIED
-        }
-
-        mapOf(
-            PowerBank.Basic to basicCount,
-            PowerBank.Fast to fastCount,
-            PowerBank.Pro to proCount
-        )
-    }
 
     // Calcolo totale selezionato (per abilitare il bottone)
     val totalSelected by remember {
@@ -74,74 +68,94 @@ fun StationInfoCard(
             .padding(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
+    )
+
+    {
+        if(isExpanded) {
+
         Column(
             modifier = Modifier.padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Intestazione
-            Text(
-                text = station.station.name ?: "Stazione di Ricarica",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Divider()
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // LISTA DEI TIPI DI POWER BANK
-            // Creiamo una riga per ogni tipo definito nella tua Sealed Class
-            val types = listOf(PowerBank.Basic, PowerBank.Fast, PowerBank.Pro)
-
-            types.forEach { type ->
-                val available = counts[type] ?: 0
-                val selected = selectionState[type] ?: 0
-
-                PowerBankSelectionRow(
-                    powerBank = type,
-                    availableCount = available,
-                    currentSelection = selected,
-                    onSelectionChanged = { newQty ->
-                        // Aggiorniamo la selezione
-                        selectionState[type] = newQty
-                    }
+        )
+            {
+                // Intestazione
+                Text(
+                    text = station.station.name ?: "Stazione di Ricarica",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
                 )
-                Divider(modifier = Modifier.padding(vertical = 4.dp))
-            }
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Divider()
 
-            // BOTTONE PROCEDI
-            Button(
-                onClick = {
-                    rentalViewModel.createRental(
-                        stationId = station.id, // Usa l'ID corretto (uid o id)
-                        rawSelection = selectionState,
-                        onSuccess = { rental ->
-                            // Resettiamo la selezione
-                            selectionState.clear()
-                            // Avvisiamo la Home Page per far partire il Timer
-                            onRentalSuccess(rental)
-                        },
-                        onError = { errorMsg ->
-                            // Qui potresti mostrare un Toast o Snackbar
-                            println("ERRORE: $errorMsg")
-                        },
-                        onNotLoggedIn = {
-                            println("Login richiesto")
-                            // Qui dovresti gestire il login (es. callback onShowLogin)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // LISTA DEI TIPI DI POWER BANK
+                // Creiamo una riga per ogni tipo definito nella tua Sealed Class
+                val types = listOf(PowerBank.BASIC, PowerBank.FAST, PowerBank.PRO)
+
+                types.forEach { type ->
+
+                    val typeKey = when (type) {
+                        is PowerBank.BASIC -> "BASIC"
+                        is PowerBank.FAST -> "FAST"
+                        is PowerBank.PRO -> "PRO"
+                    }
+
+                    val available = counts[typeKey] ?: 0
+                    val selected = selectionState[type] ?: 0
+
+                    PowerBankSelectionRow(
+                        powerBank = type,
+                        availableCount = available,
+                        currentSelection = selected,
+                        onSelectionChanged = { newQty ->
+                            selectionState[type] = newQty
                         }
                     )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                // Il bottone è attivo SOLO se ho selezionato qualcosa (> 0)
-                enabled = totalSelected > 0
-            ) {
-                Text("PROCEDI AL NOLEGGIO" + if (totalSelected > 0) " ($totalSelected)" else "")
+                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // BOTTONE PROCEDI
+                Button(
+                    onClick = {
+
+                        rentalViewModel.createRental(
+                            station = station.station,
+                            rawSelection = selectionState,
+                            onSuccess = { rental ->
+                                selectionState.clear()
+                                onRentalSuccess(rental)
+                            },
+                            onError = { errorMsg ->
+                                // Qui potresti mostrare un Toast o Snackbar
+                                println("ERRORE: $errorMsg")
+                            },
+                            onNotLoggedIn = {
+                                onShowLogin()
+
+                            }
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    // Il bottone è attivo SOLO se ho selezionato qualcosa (> 0)
+                    enabled = totalSelected > 0
+                ) {
+                    Text("PROCEDI AL NOLEGGIO" + if (totalSelected > 0) " ($totalSelected)" else "")
+                }
             }
         }
+
+        else {
+            StationInfoCardPartially(
+                station = station
+
+            )
+
+        }
+
     }
 }
 
@@ -213,4 +227,98 @@ fun PowerBankSelectionRow(
             )
         }
     }
+}
+
+
+@Composable
+fun StationInfoCardPartially(
+    station: StationItem
+) {
+    // 1. Logica di conteggio (Corretta)
+    val powerBanksAvailable = station.station.lockers.values.count { it.state == LockerStatus.OCCUPIED }
+    val emptySlotsAvailable = station.station.lockers.values.count { it.state == LockerStatus.FREE }
+
+    // 2. LAYOUT VISIVO AD ALTO CONTRASTO
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp, horizontal = 16.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // --- PRELIEVO: SFONDO VERDE SCURO, TESTO BIANCO ---
+        HighContrastStatItem(
+            icon = Icons.Default.BatteryChargingFull,
+            count = powerBanksAvailable,
+            label = "Preleva",
+            mainColor = Color.White,       // Testo
+            bgColor = Color(0xFF2E7D32)    // Sfondo Verde
+        )
+
+        // --- LINEA DIVISORIA ---
+        Divider(
+            modifier = Modifier
+                .height(50.dp)
+                .width(1.dp),
+            color = Color.LightGray.copy(alpha = 0.5f)
+        )
+
+        // --- RESTITUZIONE: SFONDO ARANCIONE SCURO, TESTO BIANCO ---
+        HighContrastStatItem(
+            icon = Icons.Default.Input,
+            count = emptySlotsAvailable,
+            label = "Restituisci",
+            mainColor = Color.White,       // Testo
+            bgColor = Color(0xFFEF6C00)    // Sfondo Arancione
+        )
+    }
+}
+
+// Nuovo componente "Badge" per la massima visibilità
+@Composable
+fun HighContrastStatItem(
+    icon: ImageVector,
+    count: Int,
+    label: String,
+    mainColor: Color,
+    bgColor: Color
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp)) // Angoli arrotondati
+            .background(bgColor)             // Colore di sfondo pieno
+            .width(130.dp)                   // Larghezza fissa per simmetria
+            .padding(vertical = 14.dp),      // Spaziatura interna
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = mainColor,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "$count",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = mainColor
+                )
+            }
+            Text(
+                text = label.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = mainColor.copy(alpha = 0.9f),
+                letterSpacing = 1.sp,
+                fontSize = 11.sp
+            )
+        }
+    }
+}
+
+fun onShowLogin() {
+
 }

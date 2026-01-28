@@ -14,15 +14,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.ricarica.map.MapView
-import com.example.ricarica.rental.Rental
+import com.example.ricarica.rental.RentalViewModel
 
 
 @Composable
@@ -31,11 +29,15 @@ fun HomePage(
     navController: NavController,
     isLoggedIn: Boolean
 ) {
+
     val stations = viewModel.stationList.value
-    val mapVm: MapViewModel = viewModel()
+
     var showLoginPopup by remember { mutableStateOf(false) }
 
-    var activeRental by remember { mutableStateOf<Rental?>(null) }
+    //REF VIEW MODEL
+    val mapVm: MapViewModel = viewModel()
+    val rentalVm: RentalViewModel = viewModel()
+
 
 
 
@@ -48,16 +50,16 @@ fun HomePage(
                 .background(Color.LightGray),
             contentAlignment = Alignment.Center
         ) {
-            MapView(vm = mapVm, stations = stations)
-        }
-
-        if(activeRental!=null) {
-            RentalBottomBar(
-                rental = activeRental!!,
-                onTimerExpired = {activeRental = null}
-
-            )
-
+            MapView(vm = mapVm,
+                stations = stations,
+                rentals = viewModel.userRentals.value,
+                onConfirmRental = {rentalToConfirm ->
+                    rentalVm.confirmPickup(rentalToConfirm)},
+                onDeleteReserved = { rentalToDelete ->
+                    rentalVm.deleteReserved(rentalToDelete)
+                },
+                onTerminateRental = {}
+                )
         }
 
         BottomBarWithButtons(

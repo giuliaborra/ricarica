@@ -9,7 +9,7 @@ sealed class PowerBank(
     val features: List<String>
 ) {
     // Sottoclasse per il modello Basic
-    data object Basic : PowerBank(
+    data object BASIC : PowerBank(
         title = "Power Bank Basic",
         features = listOf(
             "Ricarica standard (5W)",
@@ -19,7 +19,7 @@ sealed class PowerBank(
     )
 
     // Sottoclasse per il modello Fast
-    data object Fast : PowerBank(
+    data object FAST : PowerBank(
         title = "Power Bank Fast",
         features = listOf(
             "Ricarica Rapida (18W Power Delivery)",
@@ -30,7 +30,7 @@ sealed class PowerBank(
     )
 
     // Sottoclasse per il modello Pro
-    data object Pro : PowerBank(
+    data object PRO : PowerBank(
         title = "Power Bank Pro",
         features = listOf(
             "Ricarica Ultra-Rapida (65W Power Delivery)",

@@ -1,4 +1,5 @@
 package com.example.ricarica.data.model
+import android.location.Address
 import com.example.ricarica.dati.Locker
 import com.example.ricarica.rental.Rental
 
@@ -9,7 +10,9 @@ data class StationItem(
 
 data class Station(
     val enabled: Boolean = true,
+    val stationId: String = "",
     val name: String = "",
+    val address: String = "",
     val position: Position? = null,
     val lockers: Map<String, Locker> = emptyMap(),
     val rentals: Map<String, Rental> = emptyMap()
