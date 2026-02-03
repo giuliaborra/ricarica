@@ -104,8 +104,11 @@ fun MapScreen(
                         )
                     }
                     is MapSheetState.StationInfo -> {
+                        val currentId = uiState.station.id
+                        val liveStation = stations.find { it.id == currentId } ?: uiState.station
+
                         StationInfoCard(
-                            station = uiState.station,
+                            station = liveStation,
                             onRentalSuccess = { /* Gestito dai dati */ },
                             isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded
                         )

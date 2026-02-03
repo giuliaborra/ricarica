@@ -314,6 +314,9 @@ class RentalViewModel : ViewModel() {
     }
 
 
+
+
+
 }
 
 private fun calculateSingleRentalCost(powerBankTypes: Map<String, Int>, minutes: Long): Double {
@@ -337,6 +340,12 @@ private fun calculateSingleRentalCost(powerBankTypes: Map<String, Int>, minutes:
 
     // Arrotondamento a 2 decimali (es. 1.234 -> 1.23)
     return Math.round(cost * 100.0) / 100.0
+
+
 }
+
+
+
+
 
 

@@ -1,158 +1,197 @@
 package com.example.ricarica.rental
+import PowerBank
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.ricarica.DtmfPlayer
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
+import kotlin.math.ceil
 
 @Composable
 fun ActiveRentalCard(
     rental: Rental,
     onTerminateClick: (Rental) -> Unit
 ) {
+    // Stati per la UI che si aggiornano ogni secondo
     var durationString by remember { mutableStateOf("00:00:00") }
-    var currentCost by remember { mutableStateOf("0.00€") } // Esempio se vuoi mostrare costo in tempo reale
+    var currentCostString by remember { mutableStateOf("€ 0.00") }
 
-    // Cronometro: Calcola il tempo trascorso ogni secondo
+    // Determiniamo la strategia di prezzo UNA SOLA VOLTA all'avvio
+    // (o quando cambia il rental, ma quello è improbabile in questa schermata)
+    val powerBankStrategy = remember(rental) {
+        val typeKey = rental.powerBankTypes.keys.firstOrNull() ?: "BASIC"
+        when (typeKey) {
+            "FAST" -> PowerBank.FAST
+            "PRO" -> PowerBank.PRO
+            else -> PowerBank.BASIC // Fallback su BASIC
+        }
+    }
+
+    val scope = rememberCoroutineScope()
+    val dtmfPlayer = remember { DtmfPlayer() }
+
+    // --- CRONOMETRO E CALCOLATRICE IN TEMPO REALE ---
     LaunchedEffect(key1 = rental.startTime) {
         while (true) {
             val now = System.currentTimeMillis()
             val durationMillis = now - rental.startTime
 
-            // Formattazione HH:mm:ss
+            // 1. FORMATTAZIONE TEMPO (HH:mm:ss)
             val seconds = (durationMillis / 1000) % 60
             val minutes = (durationMillis / (1000 * 60)) % 60
             val hours = (durationMillis / (1000 * 60 * 60))
-
             durationString = String.format("%02d:%02d:%02d", hours, minutes, seconds)
 
-            // Esempio calcolo costo (es. 1€ l'ora)
-            // val cost = (durationMillis / (1000.0 * 60 * 60)) * 1.0
-            // currentCost = String.format("%.2f€", cost)
+            // 2. CALCOLO COSTO LIVE (Usa i dati della classe PowerBank)
+            // Arrotondiamo i minuti per eccesso (es. 1min 1sec = 2min pagati)
+            val totalMinutes = ceil(durationMillis / 60000.0).toLong()
 
-            delay(1000L)
+            // Calcolo usando i campi della classe: pricePerMinute e maxDailyPrice
+            var liveCost = totalMinutes * powerBankStrategy.pricePerMinute
+
+            // Applica il tetto massimo giornaliero (se serve)
+            if (liveCost > powerBankStrategy.maxDailyPrice) {
+                liveCost = powerBankStrategy.maxDailyPrice
+            }
+
+            // Aggiornamento stringa costo
+            currentCostString = String.format("€ %.2f", liveCost)
+
+            // Aspetta 1 secondo prima di ricalcolare
+            delay(1000)
         }
     }
 
+    // --- UI ---
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier
-                .padding(24.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.padding(16.dp)
         ) {
-            // Header con Icona
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // HEADER: Titolo e Icona
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Icon(
-                    imageVector = Icons.Default.BatteryChargingFull,
+                    Icons.Default.BatteryChargingFull,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Noleggio Attivo",
+                    text = "Noleggio in Corso",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-            }
+                Spacer(Modifier.weight(1f))
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Timer Grande
-            Text(
-                text = durationString,
-                style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Text(
-                text = "Tempo trascorso",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Dettagli Power Bank (Tipo e Quantità)
-            Divider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(text = "Iniziato il:", style = MaterialTheme.typography.labelSmall)
+                // TYPE
+                Surface(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
                     Text(
-                        text = formatDateTime(rental.startTime),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold
+                        text = powerBankStrategy.title.replace("Power Bank ", ""), // Es: "Basic", "Fast"
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Mostra i tipi di powerbank noleggiati
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "Dispositivi:", style = MaterialTheme.typography.labelSmall)
-                Spacer(modifier = Modifier.height(4.dp))
+            // TIMER + COSTO
 
-                // Cicla sulla mappa dei tipi (es: BASIC: 1, FAST: 0)
-                rental.powerBankTypes.filter { it.value > 0 }.forEach { (type, quantity) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = type, // Es. "FAST"
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
-                            Text(
-                                text = "x$quantity",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                // TEMPO
+                Column {
+                    Text(
+                        text = "Tempo",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = durationString,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+
+                // Colonna Destra: COSTO
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "Costo Attuale",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = currentCostString,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.1f))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Bottone Termina
+            // TERMINA NOLEGGIO
             Button(
-                onClick = { onTerminateClick(rental) },
+                onClick = {
+                    val passkey = rental.unlock_code
+                    val sequence = "*${passkey}#"
+
+
+                    //PER RIPRODURRE IL SUONO
+                    /*
+                    scope.launch{
+                        dtmfPlayer.playSequence(sequence) { index ->
+
+                            if (index != -1) {
+                                println("Sta suonando il carattere numero: $index")
+                            }
+                        }
+                    }
+                    */
+
+                    onTerminateClick(rental) },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                shape = RoundedCornerShape(8.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("Termina Noleggio")
+                Text("RESTITUISCI POWERBANK")
             }
         }
     }
 }
+
 
 // Helper per formattare la data
 fun formatDateTime(millis: Long): String {

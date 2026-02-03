@@ -39,7 +39,7 @@ fun ProfilePage(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // --- NUOVO: TOP BAR CON FRECCIA INDIETRO ---
+        // TOP BAR
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -60,7 +60,6 @@ fun ProfilePage(
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
-        // -------------------------------------------
 
         // HEADER UTENTE
         ProfileHeader(
@@ -68,16 +67,15 @@ fun ProfilePage(
             email = userProfile?.email ?: "Nessuna email",
             onLogout = {
                 viewModel.signOut()
-                // Torna alla schermata di login o resetta la navigazione
                 navController.navigate("login") {
-                    popUpTo(0) // Pulisce tutto lo stack
+                    popUpTo(0)
                 }
             }
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // TITOLO SEZIONE STORICO
+        // TITOLO STORICO
         Row(
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -121,6 +119,15 @@ fun RentalItemCard(rental: Rental) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
     val dateString = try { dateFormat.format(Date(rental.startTime)) } catch (e: Exception) { "?" }
 
+    // 1. FORMATTAZIONE COSTO
+    // Se 'totalCost' esiste ed è maggiore di zero, creiamo la stringa (es. "€ 2.50")
+    val priceString = if (rental.totalCost != null && rental.totalCost > 0) {
+        String.format("€ %.2f", rental.totalCost)
+    } else {
+        ""
+
+    }
+
     val (statusText, statusColor, containerColor) = when (rental.state) {
         "ACTIVE" -> Triple("In Uso", Color(0xFF4CAF50), Color(0xFFE8F5E9))
         "COMPLETED" -> Triple("Completato", MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.surfaceVariant)
@@ -152,16 +159,41 @@ fun RentalItemCard(rental: Rental) {
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
-                Spacer(Modifier.height(4.dp))
 
-                val types = rental.powerBankTypes.keys.joinToString(", ")
-                Text(
-                    text = "Device: $types",
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
-                )
+                Spacer(Modifier.height(6.dp))
+
+                // 2. RIGA DEVICE E COSTO
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Nome Device (es. "FAST")
+                    val types = rental.powerBankTypes.keys.joinToString(", ")
+                    Text(
+                        text = "Device: $types",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // Se c'è un prezzo, lo mostriamo accanto
+                    if (priceString.isNotEmpty()) {
+                        Spacer(Modifier.width(12.dp))
+
+                        // Sfondo leggero per il prezzo
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = priceString,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
             }
 
+            // Badge Stato (A destra)
             Surface(
                 color = containerColor,
                 shape = RoundedCornerShape(8.dp),

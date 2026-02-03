@@ -121,7 +121,9 @@ fun RentalItemRow(
 
             // Tasto Ritira
             Button(
-                onClick = onConfirm,
+                onClick = {
+
+                    onConfirm },
                 modifier = Modifier.padding(start = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {

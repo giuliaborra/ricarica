@@ -9,7 +9,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ricarica.DtmfPlayer
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -20,6 +22,10 @@ fun RentalTimerCard(
     onCancel: () -> Unit,
     isExpanded: Boolean
 ) {
+
+    val scope = rememberCoroutineScope()
+    val dtmfPlayer = remember { DtmfPlayer() }
+
     var timeLeft by remember { mutableStateOf("20:00") }
 
     LaunchedEffect(key1 = rental.endTime) {
@@ -99,7 +105,25 @@ fun RentalTimerCard(
 
                 // BOTTONI
                 Button(
-                    onClick = onConfirm,
+                    onClick = {
+                        val passkey = rental.unlock_code
+                        val sequence = "#${passkey}*"
+
+
+                        //PER RIPRODURRE IL SUONO
+                        /*
+                        scope.launch{
+                            dtmfPlayer.playSequence(sequence) { index ->
+
+                                if (index != -1) {
+                                    println("Sta suonando il carattere numero: $index")
+                                }
+                            }
+                        }
+                        */
+
+
+                        onConfirm },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 ) {

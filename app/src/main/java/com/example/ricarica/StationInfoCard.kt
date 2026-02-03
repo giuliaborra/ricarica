@@ -121,7 +121,9 @@ fun StationInfoCard(
                 // BOTTONE PROCEDI
                 Button(
                     onClick = {
+                        val passkey =
                         rentalViewModel.createRental(
+
                             stationId = station.id,
                             rawSelection = selectionState,
                             onSuccess = { rental ->
@@ -130,11 +132,8 @@ fun StationInfoCard(
                             },
                             onError = { errorMsg ->
                                 // Qui potresti mostrare un Toast o Snackbar
-                                println("ERRORE: $errorMsg")
-                            },
-                            onNotLoggedIn = {
-
-                            }
+                                println("ERRORE: $errorMsg") },
+                            onNotLoggedIn = {}
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
