@@ -1,8 +1,10 @@
 package com.example.ricarica.map
-
+import MapSheetState
 import MapViewModel
+import MultiRentalTimerCard
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -19,11 +21,11 @@ import com.example.ricarica.StationInfoCard
 import com.example.ricarica.data.model.StationItem
 import com.example.ricarica.rental.ActiveRentalsSection
 import com.example.ricarica.rental.Rental
-import com.example.ricarica.rental.RentalTimerCard
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MapView(
+fun MapScreen(
     vm: MapViewModel,
     stations: List<StationItem>,
     rentals: List<Rental>,
@@ -31,34 +33,34 @@ fun MapView(
     onDeleteReserved: (Rental) -> Unit,
     onTerminateRental: (Rental) -> Unit
 ) {
-    val selectedStation = vm.selectedStation.value
+    // 1. Calcolo dello stato (Come deciso nel passaggio precedente)
+    val uiState = vm.computeSheetState(rentals)
 
-    var tempRental by remember { mutableStateOf<Rental?>(null) }
-
-    val reservedRental = tempRental ?: rentals.find { it.state == "RESERVED" }
-    val activeRentalsList = rentals.filter { it.state == "ACTIVE" }
-
-    LaunchedEffect(rentals) {
-        if (rentals.any { it.rentalId == tempRental?.rentalId }) {
-            tempRental = null
-        }
+    // 2. Configurazione dinamica
+    val (peekHeight, canSkipHidden) = when (uiState) {
+        is MapSheetState.Hidden -> 0.dp to false
+        is MapSheetState.ActiveRentals -> 130.dp to true  // BLOCCATO: Non si può chiudere
+        is MapSheetState.Reserved -> 160.dp to true       // BLOCCATO
+        is MapSheetState.StationInfo -> 160.dp to false   // QUESTO SI PUÒ CHIUDERE
     }
 
-    val isRentalMode = reservedRental != null || activeRentalsList.isNotEmpty()
-
     val scaffoldState = rememberBottomSheetScaffoldState(
-        bottomSheetState = key(isRentalMode) {
+        bottomSheetState = key(uiState) {
             rememberStandardBottomSheetState(
-                initialValue = if (isRentalMode) SheetValue.PartiallyExpanded else SheetValue.Hidden,
-                skipHiddenState = isRentalMode
+                initialValue = if (uiState is MapSheetState.Hidden) SheetValue.Hidden else SheetValue.PartiallyExpanded,
+                skipHiddenState = canSkipHidden
             )
         }
     )
 
-    val shouldShowSheet = selectedStation != null || isRentalMode
+    // -------------------------------------------------------------------------
+    // LOGICA DI RIMBALZO (IL FIX È QUI)
+    // -------------------------------------------------------------------------
 
-    LaunchedEffect(shouldShowSheet) {
-        if (shouldShowSheet) {
+    // A. Se lo stato cambia (es. da StationInfo a ActiveRentals), forziamo l'apertura
+    LaunchedEffect(uiState) {
+        if (uiState !is MapSheetState.Hidden) {
+            // Se la barra è nascosta ma ora dobbiamo mostrare qualcosa, la tiriamo su
             if (scaffoldState.bottomSheetState.currentValue == SheetValue.Hidden) {
                 scaffoldState.bottomSheetState.partialExpand()
             }
@@ -67,67 +69,55 @@ fun MapView(
         }
     }
 
-    val isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded
-
-    // MODIFICA 1: CALCOLO ALTEZZA DINAMICA
-    // Se stiamo mostrando solo la "Active Bar" minimal, l'altezza deve essere ridotta (es. 80dp).
-    // Se mostriamo il Timer di prenotazione o le Info Stazione, serve più spazio (es. 160dp).
-    val dynamicPeekHeight = when {
-        reservedRental != null -> 160.dp       // Serve spazio per il timer
-        selectedStation != null -> 160.dp      // Serve spazio per info stazione
-        activeRentalsList.isNotEmpty() -> 130.dp // BASTA POCO SPAZIO (solo la pillola colorata)
-        else -> 0.dp
+    // B. Se l'utente SWIPA GIÙ la scheda stazione, dobbiamo resettare la selezione nel VM.
+    // Questo farà scattare il caso A immediatamente dopo.
+    LaunchedEffect(scaffoldState.bottomSheetState.currentValue) {
+        if (scaffoldState.bottomSheetState.currentValue == SheetValue.Hidden) {
+            // Se l'utente ha nascosto il foglio e c'era una stazione selezionata...
+            if (vm.selectedStation.value != null) {
+                vm.dismissStation() // ...la deselezioniamo!
+            }
+        }
     }
+
+    // -------------------------------------------------------------------------
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
-        // MODIFICA 2: Usa l'altezza calcolata qui sotto
-        sheetPeekHeight = if (shouldShowSheet) dynamicPeekHeight else 0.dp,
+        sheetPeekHeight = peekHeight,
+        // Lasciamo sempre lo swipe abilitato, skipHiddenState gestisce se si può chiudere del tutto o no
         sheetSwipeEnabled = true,
         sheetContent = {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight() // IMPORTANTE: dà corpo al foglio per lo swipe
                     .padding(bottom = 12.dp)
             ) {
-                when {
-                    reservedRental != null -> {
-                        RentalTimerCard(
-                            rental = reservedRental,
-                            onConfirm = { onConfirmRental(reservedRental) },
-                            onCancel = {
-                                onDeleteReserved(reservedRental)
-                                tempRental = null
-                            },
-                            isExpanded = isExpanded
+                when (uiState) {
+                    is MapSheetState.Reserved -> {
+                        MultiRentalTimerCard(
+                            rentals = uiState.rentals,
+                            onConfirm = { singleRental -> onConfirmRental(singleRental)},
+                            onCancel = { singleRental -> onDeleteReserved(singleRental) },
+                            isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded
                         )
                     }
-
-                    selectedStation != null -> {
-                        val freshStation = stations.find { it.id == selectedStation.id }
-                        freshStation?.let {
-                            StationInfoCard(
-                                station = it,
-                                onRentalSuccess = { newRental ->
-                                    tempRental = newRental
-                                },
-                                isExpanded = isExpanded,
-                            )
-                        }
+                    is MapSheetState.StationInfo -> {
+                        StationInfoCard(
+                            station = uiState.station,
+                            onRentalSuccess = { /* Gestito dai dati */ },
+                            isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded
+                        )
                     }
-
-                    activeRentalsList.isNotEmpty() -> {
-                        // MODIFICA 3: Passiamo isExpanded per far cambiare la UI da barra a lista
+                    is MapSheetState.ActiveRentals -> {
                         ActiveRentalsSection(
-                            activeRentals = activeRentalsList,
+                            activeRentals = uiState.rentals,
                             onTerminateClick = onTerminateRental,
-                            isExpanded = isExpanded
+                            isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded
                         )
                     }
-
-                    else -> {
-                        Spacer(modifier = Modifier.height(1.dp))
-                    }
+                    MapSheetState.Hidden -> Spacer(Modifier.height(1.dp))
                 }
             }
         },
@@ -136,7 +126,9 @@ fun MapView(
         MainMapContainer(
             stations = stations,
             contentPadding = paddingValues,
-            onMarkerClick = { stationItem -> vm.onMarkerClick(stationItem) }
+            onMarkerClick = { vm.onMarkerClick(it) },
+            // IMPORTANTE: Se clicchi sulla mappa vuota, deselezioni la stazione
+
         )
     }
 }

@@ -1,7 +1,4 @@
 package com.example.ricarica
-import LoginPage
-import ProfileInfoPage
-import RegisterPage
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,7 +20,10 @@ import com.example.ricarica.home.HomePage
 import com.example.ricarica.home.HomeViewModel
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.*
+import com.example.ricarica.auth.LoginPage
+import com.example.ricarica.auth.RegisterPage
 import com.example.ricarica.profile.AuthViewModel
+import com.example.ricarica.profile.ProfilePage
 import com.example.ricarica.ui.theme.RicaricaTheme
 
 
@@ -76,14 +76,14 @@ fun SomeApp() {
 
                 composable("home") { HomePage(viewModel = homeViewModel, navController, isLoggedIn) }
                 composable("catalog") { CatalogPage(viewModel = homeViewModel, navController) }
-                composable ("profile" ) { ProfileInfoPage (authViewModel, navController) }
+                composable ("profile" ) { ProfilePage (authViewModel, navController) }
 
                 //Pagina per effettuare il login
                 composable ( "login") {
                     LoginPage(
                         authViewModel,
                         {navController.navigate("profile")},
-                        {navController.navigate("home")}
+                        {navController.navigate("register")}
 
                     )
                 }
@@ -93,7 +93,7 @@ fun SomeApp() {
                     RegisterPage(
                         authViewModel,
                         {navController.navigate("profile")},
-                        {navController.navigate("home")}
+                        {navController.navigate("login")}
 
                     )
                 }

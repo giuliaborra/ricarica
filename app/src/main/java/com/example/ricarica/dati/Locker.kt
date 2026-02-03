@@ -1,7 +1,5 @@
 package com.example.ricarica.dati
 
-import android.R
-
 object LockerStatus {
     const val FREE = "FREE"           // VUOTO: Disponibile per la RESTITUZIONE
     const val OCCUPIED = "OCCUPIED"   // PIENO: Disponibile per il NOLEGGIO
@@ -13,5 +11,5 @@ data class Locker(
     val powerBankId: String? = null,
     val type: String? = null,
     val state: String = "",
-    val passKey: String? = null
+    val unlock_code: Int? = null
 )

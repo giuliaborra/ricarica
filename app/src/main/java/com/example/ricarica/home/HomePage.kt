@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.ricarica.map.MapView
+import com.example.ricarica.map.MapScreen
 import com.example.ricarica.rental.RentalViewModel
 
 
@@ -31,7 +31,6 @@ fun HomePage(
 ) {
 
     val stations = viewModel.stationList.value
-
     var showLoginPopup by remember { mutableStateOf(false) }
 
     //REF VIEW MODEL
@@ -50,21 +49,26 @@ fun HomePage(
                 .background(Color.LightGray),
             contentAlignment = Alignment.Center
         ) {
-            MapView(vm = mapVm,
+            MapScreen(
+                vm = mapVm,
                 stations = stations,
                 rentals = viewModel.userRentals.value,
-                onConfirmRental = {rentalToConfirm ->
-                    rentalVm.confirmPickup(rentalToConfirm)},
+                onConfirmRental = { rentalToConfirm ->
+                    rentalVm.confirmPickup(rentalToConfirm)
+                },
                 onDeleteReserved = { rentalToDelete ->
                     rentalVm.deleteReserved(rentalToDelete)
                 },
-                onTerminateRental = {}
-                )
+                onTerminateRental = {rentalToReturn ->
+                    rentalVm.terminateRental(rentalToReturn,
+                        onError = {error("errore nella restituzione")},
+                        onSuccess = {})}
+            )
         }
 
         BottomBarWithButtons(
-            modifier = Modifier
-                .fillMaxWidth()
+          modifier = Modifier
+            .fillMaxWidth()
                 .weight(1f),
             onCatalogClick = { navController.navigate("catalog") },
             onProfileClick = {
@@ -98,5 +102,6 @@ fun HomePage(
         )
     }
 }
+
 
 

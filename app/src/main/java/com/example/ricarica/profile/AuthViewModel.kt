@@ -1,15 +1,13 @@
 package com.example.ricarica.profile
 
 import androidx.lifecycle.ViewModel
-import com.example.ricarica.rental.Rental
 import com.example.ricarica.dati.UserProfile
-import com.google.firebase.Firebase
+import com.example.ricarica.rental.Rental
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.auth
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -19,119 +17,113 @@ sealed class AuthState {
     data class LoggedIn(val uid: String) : AuthState()
 }
 
-
-
 class AuthViewModel : ViewModel() {
 
     private val auth = FirebaseAuth.getInstance()
     private val db = FirebaseDatabase.getInstance().reference
 
+    // --- Stati ---
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState = _authState.asStateFlow()
 
     private val _userProfile = MutableStateFlow<UserProfile?>(null)
     val userProfile = _userProfile.asStateFlow()
 
+    // Liste Noleggi
+    private val _activeRentals = MutableStateFlow<List<Rental>>(emptyList())
+    val activeRentals = _activeRentals.asStateFlow()
+
+    private val _rentalHistory = MutableStateFlow<List<Rental>>(emptyList())
+    val rentalHistory = _rentalHistory.asStateFlow()
+    // -------------
+
     private var profileListener: ValueEventListener? = null
+    private var rentalListener: ValueEventListener? = null
 
     init {
-
         auth.addAuthStateListener { fb ->
-
             val user = fb.currentUser
             if (user == null) {
-                detachProfileListener()
+                detachListeners()
                 _userProfile.value = null
+                _activeRentals.value = emptyList()
+                _rentalHistory.value = emptyList()
                 _authState.value = AuthState.LoggedOut
             } else {
                 _authState.value = AuthState.LoggedIn(user.uid)
-                attachProfileListener(user.uid)
+                attachListeners(user.uid)
             }
         }
     }
 
-    fun login(
-        email: String,
-        password: String,
-        onSuccess: () -> Unit,
-        onError: (String) -> Unit
-    ) {
-        auth.signInWithEmailAndPassword(email, password)
+    // --- Login & Register ---
+    fun login(email: String, pass: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        if (email.isBlank() || pass.isBlank()) { onError("Compila tutti i campi"); return }
+        auth.signInWithEmailAndPassword(email, pass)
             .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { e -> onError(e.message ?: "Errore login") }
+            .addOnFailureListener { onError(it.message ?: "Errore login") }
     }
 
-    fun register(
-        email: String,
-        password: String,
-        username: String = "",
-        rentals: Map<String, Rental> = emptyMap(),
-        onSuccess: () -> Unit,
-        onError: (String) -> Unit
-    ) {
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnSuccessListener { result ->
-                val uid = result.user?.uid
-                if (uid == null) {
-                    onError("UID non disponibile")
-                    return@addOnSuccessListener
+    fun register(email: String, pass: String, userName: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        if (email.isBlank() || pass.isBlank()) { onError("Compila tutti i campi"); return }
+        auth.createUserWithEmailAndPassword(email, pass)
+            .addOnSuccessListener { res ->
+                res.user?.uid?.let { uid ->
+                    val profile = UserProfile(userName = userName, email = email)
+                    db.child("users").child(uid).setValue(profile).addOnSuccessListener { onSuccess() }
                 }
-
-                val profile = UserProfile(
-                    uid = uid,
-                    email = email,
-                    userName = username,
-                    rentals = rentals,
-                    createdAt = System.currentTimeMillis(),
-                )
-
-                // Scrivo in Realtime Database: /users/{uid}
-                db.child("users").child(uid).setValue(profile)
-                    .addOnSuccessListener { onSuccess() }
-                    .addOnFailureListener { e ->
-                        // Se vuoi essere super coerente: puoi anche eliminare l’utente Auth creato se fallisce il DB.
-                        onError(e.message ?: "Errore salvataggio profilo su database")
-                    }
             }
-            .addOnFailureListener { e -> onError(e.message ?: "Errore registrazione") }
+            .addOnFailureListener { onError(it.message ?: "Errore registrazione") }
     }
 
     fun signOut() {
         auth.signOut()
-        // l’AuthStateListener farà il resto (LoggedOut + pulizia profilo)
     }
 
-    private fun attachProfileListener(uid: String) {
-        detachProfileListener()
+    // --- Listener Firebase ---
+    private fun attachListeners(uid: String) {
+        detachListeners()
 
-        val ref = db.child("users").child(uid)
-        val listener = object : ValueEventListener {
+        // 1. Profilo
+        val profileRef = db.child("users").child(uid)
+        val pListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (!snapshot.exists()) {
-                    // IL PROFILO NON ESISTE PIÙ NEL DB
-                    // Se l'utente è loggato in Auth ma non c'è nel DB, forziamo il logout
-                    signOut()
-                    return
-                }
-                _userProfile.value = snapshot.getValue(UserProfile::class.java)
+                if (snapshot.exists()) _userProfile.value = snapshot.getValue(UserProfile::class.java)
             }
-
-            override fun onCancelled(error: DatabaseError) { }
+            override fun onCancelled(error: DatabaseError) {}
         }
-        ref.addValueEventListener(listener)
-        profileListener = listener
+        profileRef.addValueEventListener(pListener)
+        profileListener = pListener
+
+        // 2. Noleggi (Logica Aggiornata)
+        val rentalsRef = db.child("users").child(uid).child("rentals")
+        val rListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val allRentals = snapshot.children.mapNotNull { it.getValue(Rental::class.java) }
+
+                // LISTA 1: ATTIVI (Per la Home/Mappa)
+                // Include quelli in corso, prenotati o in restituzione
+                _activeRentals.value = allRentals.filter {
+                    it.state == "ACTIVE" || it.state == "RESERVED" || it.state == "RETURNING"
+                }.sortedByDescending { it.startTime }
+
+                // LISTA 2: STORICO (Per il Profilo)
+                // Come richiesto: Filtriamo per ACTIVE o COMPLETED
+                _rentalHistory.value = allRentals.filter {
+                    it.state == "ACTIVE" || it.state == "COMPLETED"
+                }.sortedByDescending { it.endTime ?: it.startTime }
+            }
+            override fun onCancelled(error: DatabaseError) {}
+        }
+        rentalsRef.addValueEventListener(rListener)
+        rentalListener = rListener
     }
 
-    private fun detachProfileListener() {
-        val uid = auth.currentUser?.uid
-        val listener = profileListener ?: return
-        if (uid != null) db.child("users").child(uid).removeEventListener(listener)
+    private fun detachListeners() {
+        val uid = auth.currentUser?.uid ?: return
+        if (profileListener != null) db.child("users").child(uid).removeEventListener(profileListener!!)
+        if (rentalListener != null) db.child("users").child(uid).child("rentals").removeEventListener(rentalListener!!)
         profileListener = null
-    }
-
-    // Nel tuo ViewModel che gestisce l'autenticazione
-    fun forceLogout() {
-        Firebase.auth.signOut()
-
+        rentalListener = null
     }
 }

@@ -40,7 +40,7 @@ fun StationInfoCard(
     station: StationItem,
     isExpanded: Boolean,
     rentalViewModel: RentalViewModel = viewModel(),
-    onRentalSuccess: (Rental) -> Unit // <--- Callback per avvisare la Home
+    onRentalSuccess: (List<Rental>) -> Unit // <--- Callback per avvisare la Home
 ) {
     // STATO SELEZIONE UTENTE: Quanti ne vuole comprare ora
     val selectionState = remember { mutableStateMapOf<PowerBank, Int>() }
@@ -121,9 +121,8 @@ fun StationInfoCard(
                 // BOTTONE PROCEDI
                 Button(
                     onClick = {
-
                         rentalViewModel.createRental(
-                            station = station.station,
+                            stationId = station.id,
                             rawSelection = selectionState,
                             onSuccess = { rental ->
                                 selectionState.clear()
@@ -134,7 +133,6 @@ fun StationInfoCard(
                                 println("ERRORE: $errorMsg")
                             },
                             onNotLoggedIn = {
-                                onShowLogin()
 
                             }
                         )
@@ -319,6 +317,3 @@ fun HighContrastStatItem(
     }
 }
 
-fun onShowLogin() {
-
-}

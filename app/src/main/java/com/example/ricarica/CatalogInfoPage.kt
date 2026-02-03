@@ -53,7 +53,7 @@ fun CatalogPage(
         )
 
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             items(typeOfPowerBank) { pb ->
                 InfoCardPB(powerBank = pb)

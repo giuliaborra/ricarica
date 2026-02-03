@@ -1,5 +1,4 @@
 package com.example.ricarica.map
-
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable

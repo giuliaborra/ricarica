@@ -9,7 +9,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.delay
 
 
@@ -82,7 +81,7 @@ fun RentalTimerCard(
                     modifier = Modifier.padding(bottom = 8.dp)
                 ) {
                     Text(
-                        text = rental.passkey,
+                        text = rental.unlock_code.toString(),
                         modifier = Modifier.padding(horizontal = 40.dp, vertical = 12.dp),
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.ExtraBold,
