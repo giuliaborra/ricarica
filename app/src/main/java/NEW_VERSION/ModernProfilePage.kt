@@ -91,7 +91,7 @@ fun ModernProfilePage(
                     ProfileMenuItem(
                         icon = Icons.Outlined.Person,
                         title = "Modifica profilo",
-                        onClick = { /* Naviga a Edit Profile */ }
+                        onClick = { navController.navigate("edit_profile") }
                     )
                     ProfileDivider()
                     ProfileMenuItem(

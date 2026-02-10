@@ -179,7 +179,7 @@ fun MultiRentalTimerCard(
                                     val sequence = "*${rental.unlock_code}#"
 
                                     dtmfPlayer.playSequence(sequence) {}
-                                        //onConfirm(rental)
+                                        onConfirm(rental)
                                         showDialog = false
                                         isTransmitting = false
 

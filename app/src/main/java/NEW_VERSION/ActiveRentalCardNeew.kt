@@ -195,8 +195,7 @@ fun ModernActiveRentalCard(
                                         val sequence = "#$returnCode*"
                                         dtmfPlayer.playSequence(sequence) {}
 
-                                        // TERMINO RENTAL
-                                            /*rentalViewModel.terminateRental(
+                                            rentalViewModel.terminateRental(
                                                 rental = rental,
                                                 targetLockerId = targetLockerId,
                                                 onSuccess = {
@@ -208,7 +207,7 @@ fun ModernActiveRentalCard(
                                                     currentState = ReturnState.READY_TO_OPEN
                                                 }
                                             )
-                                            */
+
 
 
                                     }

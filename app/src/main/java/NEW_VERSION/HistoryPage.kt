@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.Euro
@@ -27,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import com.example.ricarica.profile.AuthViewModel
 import com.example.ricarica.rental.Rental
 import java.text.SimpleDateFormat
@@ -43,7 +46,8 @@ private val LightUiBg = Color(0xFFF5F5F5)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryPage(
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    navController: NavController
 ) {
     // 1. Recuperiamo tutti i noleggi
     val allRentals by authViewModel.rentalHistory.collectAsState()
@@ -64,6 +68,15 @@ fun HistoryPage(
         containerColor = BackgroundColor,
         topBar = {
             CenterAlignedTopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigate("profile") }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Torna indietro",
+                            tint = TextBlack
+                        )
+                    }
+                },
                 title = {
                     Text(
                         text = "Cronologia",
@@ -76,7 +89,8 @@ fun HistoryPage(
                 ),
                 modifier = Modifier.shadow(4.dp)
             )
-        }
+        },
+
     ) { paddingValues ->
 
         if (historyRentals.isEmpty()) {

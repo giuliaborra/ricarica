@@ -1,5 +1,6 @@
 package com.example.ricarica
 import NEW_VERSION.BottomNavBar
+import NEW_VERSION.EditProfilePage
 import NEW_VERSION.HomePageNew
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -99,7 +100,7 @@ fun SomeApp() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Mostra la barra solo nelle pagine principali, MAI in login/register
-    val showBottomBar = currentRoute in listOf("home", "catalog", "profile", "rentals_list")
+    val showBottomBar = currentRoute in listOf("home", "catalog", "profile", "rentals_list", "rental_history", "edit_profile")
 
     Scaffold(
         bottomBar = {
@@ -116,6 +117,7 @@ fun SomeApp() {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+
             composable("home") {
                 HomePageNew(homeViewModel, navController, isGuest = isGuestMode.value)
             }
@@ -133,8 +135,14 @@ fun SomeApp() {
             }
 
             composable("rental_history") {
-                HistoryPage(authViewModel)
+                HistoryPage(authViewModel, navController)
             }
+
+            composable("edit_profile") {
+                EditProfilePage(navController, authViewModel)
+            }
+
+
 
             // --- AREA AUTENTICAZIONE ---
 
