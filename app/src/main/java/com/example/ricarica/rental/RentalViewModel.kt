@@ -109,6 +109,7 @@ class RentalViewModel : ViewModel() {
 
                         // 3. Stazione (Storico Locale) - MANTENUTO COME RICHIESTO
                         childUpdates["/stations/${stationId}/rentals/$rentalKey"] = newRental
+                        childUpdates["/stations/${stationId}/lockers/${chosenLocker.id}/rental"] = newRental
 
                         // 4. Locker Fisico (Prenotazione)
                         childUpdates["/stations/${stationId}/lockers/${chosenLocker.id}/state"] = "RESERVED"
