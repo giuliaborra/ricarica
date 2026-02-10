@@ -1,7 +1,7 @@
 package com.example.ricarica.map
 import MapSheetState
 import MapViewModel
-import MultiRentalTimerCard
+
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -22,7 +22,7 @@ import com.example.ricarica.data.model.StationItem
 import com.example.ricarica.rental.ActiveRentalsSection
 import com.example.ricarica.rental.Rental
 
-
+/*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
@@ -135,3 +135,4 @@ fun MapScreen(
         )
     }
 }
+*/

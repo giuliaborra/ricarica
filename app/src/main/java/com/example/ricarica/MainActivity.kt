@@ -16,7 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.ricarica.home.HomePage
+//import com.example.ricarica.home.HomePage
 import com.example.ricarica.home.HomeViewModel
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.*
@@ -25,7 +25,7 @@ import com.example.ricarica.auth.RegisterPage
 import com.example.ricarica.profile.AuthViewModel
 import com.example.ricarica.profile.ProfilePage
 import com.example.ricarica.ui.theme.RicaricaTheme
-
+/*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,7 +82,7 @@ fun SomeApp() {
                 composable ( "login") {
                     LoginPage(
                         authViewModel,
-                        {navController.navigate("profile")},
+                        {navController.navigate("home")},
                         {navController.navigate("register")}
 
                     )
@@ -101,7 +101,6 @@ fun SomeApp() {
         }
     }
 }
-
-
+*/
 
 

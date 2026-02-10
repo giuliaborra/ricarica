@@ -1,53 +1,50 @@
 package com.example.ricarica
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Input
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ricarica.data.model.StationItem
 import com.example.ricarica.rental.Rental
-import com.example.ricarica.rental.RentalViewModel // Assicurati che il package sia giusto
-import PowerBank // La tua sealed class
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.automirrored.filled.Input
-import androidx.compose.material.icons.filled.BatteryChargingFull
-import androidx.compose.material.icons.filled.BatteryStd
-import androidx.compose.material.icons.filled.Input
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.lifecycle.viewModelScope
+import com.example.ricarica.rental.RentalViewModel
+import PowerBank
 
-// 1. Definiamo gli stati per sicurezza (se non li hai in un altro file Utils)
 object LockerStatus {
-    const val FREE = "FREE"           // Vuoto (Restituzione)
-    const val OCCUPIED = "OCCUPIED"   // Pieno (Noleggio disponibile)
-    const val RESERVED = "RESERVED"   // Prenotato (Timer in corso)
-    const val BLOCKED = "BLOCKED"     // Guasto
+    const val FREE = "FREE"
+    const val OCCUPIED = "OCCUPIED"
+    const val RESERVED = "RESERVED"
+    const val BLOCKED = "BLOCKED"
 }
 
 @Composable
 fun StationInfoCard(
     station: StationItem,
-    isExpanded: Boolean,
+    isExpanded: Boolean, // Questo arriva dal BottomSheet state
     rentalViewModel: RentalViewModel = viewModel(),
-    onRentalSuccess: (List<Rental>) -> Unit // <--- Callback per avvisare la Home
+    onRentalSuccess: (List<Rental>) -> Unit,
+    onDismiss: () -> Unit // <--- FONDAMENTALE PER CHIUDERE IL FOGLIO
 ) {
-    // STATO SELEZIONE UTENTE: Quanti ne vuole comprare ora
+    // STATO SELEZIONE
     val selectionState = remember { mutableStateMapOf<PowerBank, Int>() }
 
-    // CALCOLO DINAMICO DELLE DISPONIBILITÀ (Reattivo al DB)
-    // Ogni volta che 'station' cambia (aggiornamento Firebase), questo blocco viene rieseguito.
-    // ELIMINA IL REMEMBER. Scrivi solo questo:
+    // CALCOLO DISPONIBILITÀ (Reattivo)
     val lockers = station.station.lockers.values
     val counts: Map<String, Int> = mapOf(
         "BASIC" to lockers.count { it.state == "OCCUPIED" && it.type == "BASIC" },
@@ -55,53 +52,74 @@ fun StationInfoCard(
         "PRO" to lockers.count { it.state == "OCCUPIED" && it.type == "PRO" }
     )
 
+    val totalSelected by remember { derivedStateOf { selectionState.values.sum() } }
 
-
-    // Calcolo totale selezionato (per abilitare il bottone)
-    val totalSelected by remember {
-        derivedStateOf { selectionState.values.sum() }
-    }
-
+    // CARD CONTENITORE PRINCIPALE
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            // Rimuovi il padding orizzontale se vuoi che tocchi i bordi, o lascialo per effetto "floating"
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    )
-
-    {
-        if(isExpanded) {
-
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(24.dp) // Più rotondo
+    ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
-        )
-            {
-                // Intestazione
-                Text(
-                    text = station.station.name ?: "Stazione di Ricarica",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+        ) {
 
+            // --- HEADER COMUNE (Nome Stazione + Tasto X) ---
+            // Visibile sia da chiuso che da aperto per coerenza
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = station.station.name ?: "Stazione Ricarica",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                    if (!isExpanded) {
+                        Text(
+                            text = "Scorri su per noleggiare",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                // TASTO CHIUDI (La X che ti serve!)
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Chiudi",
+                        tint = Color.Gray
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- CONTENUTO DINAMICO ---
+            if (isExpanded) {
+                // VISTA ESPANSA: LISTA SELEZIONE
                 Divider()
-
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // LISTA DEI TIPI DI POWER BANK
-                // Creiamo una riga per ogni tipo definito nella tua Sealed Class
                 val types = listOf(PowerBank.BASIC, PowerBank.FAST, PowerBank.PRO)
 
                 types.forEach { type ->
-
                     val typeKey = when (type) {
                         is PowerBank.BASIC -> "BASIC"
                         is PowerBank.FAST -> "FAST"
                         is PowerBank.PRO -> "PRO"
                     }
-
                     val available = counts[typeKey] ?: 0
                     val selected = selectionState[type] ?: 0
 
@@ -109,54 +127,53 @@ fun StationInfoCard(
                         powerBank = type,
                         availableCount = available,
                         currentSelection = selected,
-                        onSelectionChanged = { newQty ->
-                            selectionState[type] = newQty
-                        }
+                        onSelectionChanged = { newQty -> selectionState[type] = newQty }
                     )
-                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                    Divider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFEEEEEE))
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // BOTTONE PROCEDI
                 Button(
                     onClick = {
-                        val passkey =
                         rentalViewModel.createRental(
-
                             stationId = station.id,
                             rawSelection = selectionState,
                             onSuccess = { rental ->
                                 selectionState.clear()
                                 onRentalSuccess(rental)
                             },
-                            onError = { errorMsg ->
-                                // Qui potresti mostrare un Toast o Snackbar
-                                println("ERRORE: $errorMsg") },
+                            onError = { println("ERRORE: $it") },
                             onNotLoggedIn = {}
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    // Il bottone è attivo SOLO se ho selezionato qualcosa (> 0)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2E7D32) // Verde PowerShare
+                    ),
                     enabled = totalSelected > 0
                 ) {
-                    Text("PROCEDI AL NOLEGGIO" + if (totalSelected > 0) " ($totalSelected)" else "")
+                    Text(
+                        text = "PROCEDI AL NOLEGGIO" + if (totalSelected > 0) " ($totalSelected)" else "",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
+
+                // Spazio extra in fondo per evitare che la navbar copra il bottone
+                Spacer(modifier = Modifier.height(16.dp))
+            } else {
+                // VISTA RIDOTTA: SOLO STATISTICHE
+                StationInfoCardPartially(station = station)
             }
         }
-
-        else {
-            StationInfoCardPartially(
-                station = station
-
-            )
-
-        }
-
     }
 }
 
-// COMPONENTE RIGA (UI Pura - Non ha stato interno)
+// --- ROW SELEZIONE (Invariata ma pulita) ---
 @Composable
 fun PowerBankSelectionRow(
     powerBank: PowerBank,
@@ -164,114 +181,91 @@ fun PowerBankSelectionRow(
     currentSelection: Int,
     onSelectionChanged: (Int) -> Unit
 ) {
-    // Calcoliamo quanti ne rimangono visivamente
     val remainingVisual = availableCount - currentSelection
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 12.dp), // Più aria
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // LATO SINISTRO: Info
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = powerBank.title, fontWeight = FontWeight.SemiBold)
+            Text(text = powerBank.title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(
                 text = powerBank.features.firstOrNull() ?: "",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.Gray
             )
         }
 
-        // LATO DESTRO: Controlli (+ / -)
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-
-                // Tasto MENO
-                IconButton(
-                    onClick = { if (currentSelection > 0) onSelectionChanged(currentSelection - 1) },
-                    enabled = currentSelection > 0
-                ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Rimuovi")
-                }
-
-                Text(
-                    text = "$currentSelection",
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    style = MaterialTheme.typography.titleMedium
-                )
-
-                // Tasto PIÙ
-                // Si abilita solo se la selezione è minore del totale disponibile (REALE)
-                IconButton(
-                    onClick = { if (currentSelection < availableCount) onSelectionChanged(currentSelection + 1) },
-                    enabled = currentSelection < availableCount
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Aggiungi")
-                }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = { if (currentSelection > 0) onSelectionChanged(currentSelection - 1) },
+                enabled = currentSelection > 0,
+                modifier = Modifier.background(Color(0xFFF5F5F5), shape = RoundedCornerShape(8.dp)).size(32.dp)
+            ) {
+                Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(16.dp))
             }
 
-            // Testo disponibilità
             Text(
-                text = if (availableCount > 0) "$remainingVisual disponibili" else "Non disponibili",
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = 10.sp,
-                color = if (remainingVisual > 0)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.error
+                text = "$currentSelection",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
+
+            IconButton(
+                onClick = { if (currentSelection < availableCount) onSelectionChanged(currentSelection + 1) },
+                enabled = currentSelection < availableCount,
+                modifier = Modifier.background(Color(0xFFF5F5F5), shape = RoundedCornerShape(8.dp)).size(32.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+            }
         }
     }
 }
 
-
+// --- VISTA RIDOTTA (Statistiche Grafiche) ---
 @Composable
 fun StationInfoCardPartially(
     station: StationItem
 ) {
-    // 1. Logica di conteggio (Corretta)
     val powerBanksAvailable = station.station.lockers.values.count { it.state == LockerStatus.OCCUPIED }
     val emptySlotsAvailable = station.station.lockers.values.count { it.state == LockerStatus.FREE }
 
-    // 2. LAYOUT VISIVO AD ALTO CONTRASTO
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp, horizontal = 16.dp),
+            .padding(top = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // --- PRELIEVO: SFONDO VERDE SCURO, TESTO BIANCO ---
         HighContrastStatItem(
             icon = Icons.Default.BatteryChargingFull,
             count = powerBanksAvailable,
             label = "Preleva",
-            mainColor = Color.White,       // Testo
-            bgColor = Color(0xFF2E7D32)    // Sfondo Verde
+            mainColor = Color.White,
+            bgColor = Color(0xFF2E7D32) // Verde
         )
 
-        // --- LINEA DIVISORIA ---
         Divider(
             modifier = Modifier
-                .height(50.dp)
+                .height(40.dp)
                 .width(1.dp),
-            color = Color.LightGray.copy(alpha = 0.5f)
+            color = Color.LightGray
         )
 
-        // --- RESTITUZIONE: SFONDO ARANCIONE SCURO, TESTO BIANCO ---
         HighContrastStatItem(
             icon = Icons.Default.Input,
             count = emptySlotsAvailable,
             label = "Restituisci",
-            mainColor = Color.White,       // Testo
-            bgColor = Color(0xFFEF6C00)    // Sfondo Arancione
+            mainColor = Color.White,
+            bgColor = Color(0xFFEF6C00) // Arancione
         )
     }
 }
 
-// Nuovo componente "Badge" per la massima visibilità
 @Composable
 fun HighContrastStatItem(
     icon: ImageVector,
@@ -282,10 +276,10 @@ fun HighContrastStatItem(
 ) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(16.dp)) // Angoli arrotondati
-            .background(bgColor)             // Colore di sfondo pieno
-            .width(130.dp)                   // Larghezza fissa per simmetria
-            .padding(vertical = 14.dp),      // Spaziatura interna
+            .clip(RoundedCornerShape(16.dp))
+            .background(bgColor)
+            .width(140.dp) // Leggermente più largo
+            .padding(vertical = 12.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -294,12 +288,12 @@ fun HighContrastStatItem(
                     imageVector = icon,
                     contentDescription = null,
                     tint = mainColor,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "$count",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineMedium, // Più grande
                     fontWeight = FontWeight.Bold,
                     color = mainColor
                 )
@@ -315,4 +309,3 @@ fun HighContrastStatItem(
         }
     }
 }
-

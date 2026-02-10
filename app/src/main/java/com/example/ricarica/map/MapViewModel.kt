@@ -15,7 +15,7 @@ sealed interface MapSheetState {
     data class StationInfo(val station: StationItem) : MapSheetState
 
     // Caso 4: Lista noleggi attivi (Priorità bassa - persistente)
-    data class ActiveRentals(val rentals: List<Rental>) : MapSheetState
+    //data class ActiveRentals(val rentals: List<Rental>) : MapSheetState
 }
 
 class MapViewModel : ViewModel() {
@@ -45,7 +45,7 @@ class MapViewModel : ViewModel() {
             currentStation != null -> MapSheetState.StationInfo(currentStation)
 
             // 3. Se non sto facendo nulla, ma ho noleggi attivi, mostro la lista ridotta
-            activeList.isNotEmpty() -> MapSheetState.ActiveRentals(activeList)
+            //activeList.isNotEmpty() -> MapSheetState.ActiveRentals(activeList)
 
             // 4. Altrimenti nascondo tutto
             else -> MapSheetState.Hidden

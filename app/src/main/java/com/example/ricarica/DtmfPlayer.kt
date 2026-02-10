@@ -1,25 +1,31 @@
 package com.example.ricarica
+
 import android.media.AudioManager
 import android.media.ToneGenerator
 import kotlinx.coroutines.delay
 
 class DtmfPlayer {
-    // Volume al 100% (STREAM_DTMF o STREAM_MUSIC sono ok, DTMF è specifico per i toni)
-    private val toneGenerator = ToneGenerator(AudioManager.STREAM_DTMF, 100)
+    // MODIFICA QUI:
+    // 1. Usa STREAM_MUSIC invece di STREAM_DTMF (l'emulatore lo gestisce meglio)
+    // 2. Volume a 100 (massimo)
+    private val toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 100
+    )
 
     suspend fun playSequence(code: String, onNotePlayed: (Int) -> Unit) {
         for ((index, char) in code.withIndex()) {
             val toneType = getToneForChar(char)
             if (toneType != -1) {
-                onNotePlayed(index) // Callback per UI
-                toneGenerator.startTone(toneType, 200) // 200ms di suono (un po' più lungo per Arduino)
-                delay(200) // Aspetta che finisca il suono
+                onNotePlayed(index)
+                toneGenerator.startTone(toneType, 300) // Durata
+                delay(500) // Attesa fine suono
                 toneGenerator.stopTone()
-                delay(100) // 100ms di silenzio tra i toni
+                delay(500) // Pausa tra i suoni
             }
         }
-        onNotePlayed(-1) // Reset alla fine
+        onNotePlayed(-1)
     }
+
+
 
     private fun getToneForChar(c: Char): Int {
         return when (c) {
@@ -33,9 +39,13 @@ class DtmfPlayer {
             '7' -> ToneGenerator.TONE_DTMF_7
             '8' -> ToneGenerator.TONE_DTMF_8
             '9' -> ToneGenerator.TONE_DTMF_9
-            '*' -> ToneGenerator.TONE_DTMF_S // S sta per Star (*)
-            '#' -> ToneGenerator.TONE_DTMF_P // P sta per Pound (#)
+            '*' -> ToneGenerator.TONE_DTMF_S
+            '#' -> ToneGenerator.TONE_DTMF_P
             else -> -1
         }
+    }
+
+    fun release() {
+        toneGenerator.release()
     }
 }

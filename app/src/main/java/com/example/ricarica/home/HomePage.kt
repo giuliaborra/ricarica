@@ -19,9 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.ricarica.map.MapScreen
+import com.example.ricarica.profile.AuthViewModel
 import com.example.ricarica.rental.RentalViewModel
+import androidx.compose.runtime.collectAsState
 
+/*
 
 @Composable
 fun HomePage(
@@ -36,6 +38,7 @@ fun HomePage(
     //REF VIEW MODEL
     val mapVm: MapViewModel = viewModel()
     val rentalVm: RentalViewModel = viewModel()
+    val authVm: AuthViewModel = viewModel()
 
 
 
@@ -52,7 +55,7 @@ fun HomePage(
             MapScreen(
                 vm = mapVm,
                 stations = stations,
-                rentals = viewModel.userRentals.value,
+                rentals = authVm.activeRentals.collectAsState().value,
                 onConfirmRental = { rentalToConfirm ->
                     rentalVm.confirmPickup(rentalToConfirm)
                 },
@@ -105,3 +108,4 @@ fun HomePage(
 
 
 
+*/

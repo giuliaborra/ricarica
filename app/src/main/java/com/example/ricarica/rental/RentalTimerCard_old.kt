@@ -1,4 +1,5 @@
 package com.example.ricarica.rental
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -104,30 +105,20 @@ fun RentalTimerCard(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // BOTTONI
+                // ... dentro RentalTimerCard ...
+
                 Button(
                     onClick = {
-                        val passkey = rental.unlock_code
-                        val sequence = "#${passkey}*"
 
 
-                        //PER RIPRODURRE IL SUONO
-                        /*
-                        scope.launch{
-                            dtmfPlayer.playSequence(sequence) { index ->
+                            // 2. IL SUONO È FINITO. Ora puoi confermare.
 
-                                if (index != -1) {
-                                    println("Sta suonando il carattere numero: $index")
-                                }
-                            }
-                        }
-                        */
-
-
-                        onConfirm },
+                            onConfirm()
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Concludi prenotazione", fontWeight = FontWeight.Bold)
+                    Text("Ritira (Concludi prenotazione)", fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))

@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">RICARICA</string>
     <string name="google_maps_key">AIzaSyAuHwXK6ZkoW_X5I1536f7PfXlugPuZKhg</string>
+    <string name="dtmf_label">Sblocco Locker tramite Audio</string>
 </resources>
