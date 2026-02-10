@@ -194,7 +194,9 @@ fun ModernActiveRentalCard(
                                     scope.launch {
                                         val sequence = "#$returnCode*"
                                         dtmfPlayer.playSequence(sequence) {}
-                                            rentalViewModel.terminateRental(
+
+                                        // TERMINO RENTAL
+                                            /*rentalViewModel.terminateRental(
                                                 rental = rental,
                                                 targetLockerId = targetLockerId,
                                                 onSuccess = {
@@ -206,6 +208,8 @@ fun ModernActiveRentalCard(
                                                     currentState = ReturnState.READY_TO_OPEN
                                                 }
                                             )
+                                            */
+
 
                                     }
                                 },
