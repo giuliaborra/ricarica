@@ -192,6 +192,7 @@ class RentalViewModel : ViewModel() {
                         updates["/stations/$stationId/lockers/$lockerId/unlock_code"] = null
                         updates["/stations/$stationId/lockers/$lockerId/powerBankId"] = null
                         updates["/stations/$stationId/lockers/$lockerId/type"] = null
+                        updates["/stations/$stationId/lockers/$lockerId/rental"] = null
                     }
                 }
                 dbRef.updateChildren(updates).await()
