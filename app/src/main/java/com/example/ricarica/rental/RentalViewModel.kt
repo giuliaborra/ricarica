@@ -137,14 +137,22 @@ class RentalViewModel : ViewModel() {
             val currentUser = auth.currentUser ?: return@launch
             val targetPasskey = rental.unlock_code
 
+            val now = System.currentTimeMillis()
+
             val stationRef = dbRef.child("stations").child(rental.stationId).child("lockers")
             val snapshot = stationRef.get().await()
             val childUpdates = hashMapOf<String, Any?>()
+
+
 
             // Rimuoviamo il noleggio da tutte le liste
             childUpdates["/rentals/${rental.rentalId}"] = null
             childUpdates["/users/${currentUser.uid}/rentals/${rental.rentalId}"] = null
             childUpdates["/stations/${rental.stationId}/rentals/${rental.rentalId}"] = null
+
+            //tempo di inizio
+
+
 
             // Ripristiniamo il locker
             snapshot.children.forEach { lockerSnapshot ->
@@ -172,11 +180,20 @@ class RentalViewModel : ViewModel() {
                 val currentUser = auth.currentUser ?: return@launch
                 val stationId = rental.stationId
                 val updates = hashMapOf<String, Any?>()
+                val now = System.currentTimeMillis()
 
                 // Aggiorna stato in ACTIVE ovunque
                 updates["/rentals/${rental.rentalId}/state"] = "ACTIVE"
                 updates["/users/${currentUser.uid}/rentals/${rental.rentalId}/state"] = "ACTIVE"
                 updates["/stations/$stationId/rentals/${rental.rentalId}/state"] = "ACTIVE"
+
+                //aggiorna tempo
+                updates["/rentals/${rental.rentalId}/startTime"] = now
+                updates["/users/${currentUser.uid}/rentals/${rental.rentalId}/startTime"] = now
+                updates["/users/${currentUser.uid}/rentals/${rental.rentalId}/startTime"] = now
+
+
+
 
                 // Libera il locker (l'utente ha preso la batteria)
                 val lockersRef = dbRef.child("stations").child(stationId).child("lockers")

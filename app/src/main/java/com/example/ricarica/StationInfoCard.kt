@@ -244,9 +244,11 @@ fun StationInfoCardPartially(
         HighContrastStatItem(
             icon = Icons.Default.BatteryChargingFull,
             count = powerBanksAvailable,
-            label = "Preleva",
+            label = "DISPONIBILI",
             mainColor = Color.White,
-            bgColor = Color(0xFF2E7D32) // Verde
+            bgColor = Color(0xFF2E7D32),
+
+
         )
 
         Divider(
@@ -259,7 +261,7 @@ fun StationInfoCardPartially(
         HighContrastStatItem(
             icon = Icons.Default.Input,
             count = emptySlotsAvailable,
-            label = "Restituisci",
+            label = "POSTI LIBERI",
             mainColor = Color.White,
             bgColor = Color(0xFFEF6C00) // Arancione
         )

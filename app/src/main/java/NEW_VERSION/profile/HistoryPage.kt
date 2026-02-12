@@ -9,24 +9,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.Euro
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -35,6 +29,9 @@ import com.example.ricarica.rental.Rental
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import androidx.compose.ui.draw.shadow
+
+
 
 // --- COLORI STYLE ---
 private val PowerGreen = Color(0xFF2E7D32)
@@ -65,7 +62,6 @@ fun HistoryPage(
     }
 
     Scaffold(
-        containerColor = BackgroundColor,
         topBar = {
             CenterAlignedTopAppBar(
                 navigationIcon = {
@@ -79,15 +75,16 @@ fun HistoryPage(
                 },
                 title = {
                     Text(
-                        text = "Cronologia",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        text = "CRONOLOGIA",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextBlack
                     )
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = Color.White
                 ),
-                modifier = Modifier.shadow(4.dp)
+                modifier = Modifier.shadow(2.dp)
             )
         },
 

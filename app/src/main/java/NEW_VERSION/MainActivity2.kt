@@ -2,6 +2,9 @@ package com.example.ricarica
 import NEW_VERSION.BottomNavBar
 import NEW_VERSION.EditProfilePage
 import NEW_VERSION.HomePageNew
+import NEW_VERSION.profile.ChangePasswordScreen
+import NEW_VERSION.profile.PaymentMethod
+import NEW_VERSION.profile.PaymentMethodsScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.example.ricarica.auth.ModernLoginPage
 import com.example.ricarica.auth.ModernRegisterPage
@@ -100,7 +104,7 @@ fun SomeApp() {
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Mostra la barra solo nelle pagine principali, MAI in login/register
-    val showBottomBar = currentRoute in listOf("home", "catalog", "profile", "rentals_list", "rental_history", "edit_profile")
+    val showBottomBar = currentRoute in listOf("home", "catalog", "profile", "rentals_list", "rental_history", "edit_profile", "edit_password", "payment")
 
     Scaffold(
         bottomBar = {
@@ -140,6 +144,16 @@ fun SomeApp() {
 
             composable("edit_profile") {
                 EditProfilePage(navController, authViewModel)
+            }
+
+            composable("payment"){
+                PaymentMethodsScreen(authViewModel, onBackClick = { navController.navigate("profile") })
+            }
+
+            composable ("edit_password") {
+                ChangePasswordScreen(authViewModel = authViewModel,
+                    onBackClick = { navController.navigate("profile")},
+                    onPasswordUpdated = { navController.navigate("home") })
             }
 
 

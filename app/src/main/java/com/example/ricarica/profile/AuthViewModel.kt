@@ -3,6 +3,7 @@ package com.example.ricarica.profile
 import androidx.lifecycle.ViewModel
 import com.example.ricarica.dati.UserProfile
 import com.example.ricarica.rental.Rental
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -125,5 +126,38 @@ class AuthViewModel : ViewModel() {
         if (rentalListener != null) db.child("users").child(uid).child("rentals").removeEventListener(rentalListener!!)
         profileListener = null
         rentalListener = null
+    }
+
+
+    // Aggiungi questi import
+
+    // Dentro la classe AuthViewModel
+    fun updatePassword(currentPass: String, newPass: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        val user = auth.currentUser
+
+        if (user != null && user.email != null) {
+
+            // 1. Creiamo le credenziali con la password ATTUALE
+            val credential = EmailAuthProvider.getCredential(user.email!!, currentPass)
+
+            // 2. Tenta di ri-autenticare l'utente
+            user.reauthenticate(credential)
+                .addOnSuccessListener {
+                    // 3. Se la vecchia password è giusta, aggiorniamo con la NUOVA
+                    user.updatePassword(newPass)
+                        .addOnSuccessListener {
+                            onSuccess()
+                        }
+                        .addOnFailureListener { e ->
+                            onError("Errore aggiornamento: ${e.localizedMessage}")
+                        }
+                }
+                .addOnFailureListener { e ->
+                    // Qui finiamo se la password attuale è sbagliata
+                    onError("La password attuale non è corretta.")
+                }
+        } else {
+            onError("Utente non loggato.")
+        }
     }
 }

@@ -1,4 +1,4 @@
-package NEW_VERSION.profile
+package NEW_VERSION
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.ricarica.profile.AuthViewModel
+import com.example.ricarica.ui.theme.LightGreen
 
 // --- COLORI (Coerenti con il tuo tema) ---
 private val PowerRed = Color(0xFFD32F2F) // Rosso del bottone Logout

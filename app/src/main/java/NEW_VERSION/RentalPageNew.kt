@@ -70,11 +70,14 @@ fun RentalsPage(
                         }
                     }
                 },
+                /*
                 actions = {
                     IconButton(onClick = { navController.navigate("history") }) {
                         Icon(Icons.Default.History, contentDescription = "Storico", tint = TextBlack)
                     }
                 },
+                */
+
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = SurfaceWhite),
                 modifier = Modifier.shadow(4.dp)
             )

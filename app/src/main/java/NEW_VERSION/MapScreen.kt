@@ -46,8 +46,7 @@ fun MapViewModern(
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetPeekHeight = dynamicPeekHeight,
-        sheetContainerColor = Color.Transparent, // Importante per l'effetto "fluttuante"
-        // Abilita lo swipe (anche se è true di default, meglio esplicitarlo)
+        sheetContainerColor = Color.Transparent,
         sheetSwipeEnabled = true,
         sheetContent = {
             // Avvolgi tutto in un Box per gestire meglio i tocchi e l'allineamento
@@ -61,7 +60,8 @@ fun MapViewModern(
                         MultiRentalTimerCard(
                             rentals = uiState.rentals,
                             onConfirm = { onConfirmRental(it) },
-                            onCancel = { onDeleteReserved(it) }
+                            onCancel = { onDeleteReserved(it) },
+                            onTimerExpired = { onDeleteReserved(it) }
                         )
                     }
                     is MapSheetState.StationInfo -> {
@@ -73,7 +73,9 @@ fun MapViewModern(
                             // Passa l'evento di chiusura anche alla card se ha una "X"
                             onDismiss = { vm.dismissStation() },
                             onRentalSuccess = { vm.dismissStation() },
-                            isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded
+                            isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded,
+
+
                         )
                     }
                     MapSheetState.Hidden -> Spacer(Modifier.height(1.dp))

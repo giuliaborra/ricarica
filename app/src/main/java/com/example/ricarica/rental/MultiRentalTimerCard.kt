@@ -38,7 +38,10 @@ private val ErrorColor = Color(0xFFB00020)
 fun MultiRentalTimerCard(
     rentals: List<Rental>,
     onConfirm: (Rental) -> Unit,
-    onCancel: (Rental) -> Unit
+    onCancel: (Rental) -> Unit,
+    // onTimerExpired non serve più obbligatoriamente se gestisci tutto col tasto,
+    // ma puoi lasciarlo vuoto nel MapScreen se non vuoi cambiare quel file.
+    onTimerExpired: (Rental) -> Unit
 ) {
     val rental = rentals.firstOrNull() ?: return
     val scope = rememberCoroutineScope()
@@ -63,6 +66,10 @@ fun MultiRentalTimerCard(
     val maxTimeMillis = 20 * 60 * 1000L
     val elapsedTime = currentTime - (rental.startTime ?: currentTime)
     val timeLeftMillis = (maxTimeMillis - elapsedTime).coerceAtLeast(0L)
+
+    // NOTA: HO RIMOSSO LA LOGICA "if (timeLeftMillis <= 0) onTimerExpired"
+    // Ora la cancellazione è manuale tramite il bottone.
+
     val progress = (timeLeftMillis.toFloat() / maxTimeMillis.toFloat()).coerceIn(0f, 1f)
 
     val minutesLeft = TimeUnit.MILLISECONDS.toMinutes(timeLeftMillis)
@@ -90,15 +97,15 @@ fun MultiRentalTimerCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Prenotazione Attiva",
+                    text = if (timeLeftMillis > 0) "Prenotazione Attiva" else "Prenotazione Scaduta",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextBlack
+                    color = if (timeLeftMillis > 0) TextBlack else ErrorColor
                 )
                 Icon(
                     imageVector = Icons.Default.TouchApp,
                     contentDescription = null,
-                    tint = PowerGreen,
+                    tint = if (timeLeftMillis > 0) PowerGreen else ErrorColor,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -118,12 +125,11 @@ fun MultiRentalTimerCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Scade in: $timeString",
+                text = if (timeLeftMillis > 0) "Scade in: $timeString" else "Tempo Scaduto",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
                 color = barColor,
-                modifier = Modifier.align(Alignment.End),
-
+                modifier = Modifier.align(Alignment.End)
             )
         }
     }
@@ -145,60 +151,73 @@ fun MultiRentalTimerCard(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
             ) {
-                // COLONNA PRINCIPALE DEL DIALOG
                 Column(
                     modifier = Modifier
                         .padding(24.dp)
-                        .fillMaxWidth(), // Assicura che la colonna usi tutto lo spazio
-                    horizontalAlignment = Alignment.CenterHorizontally, // Centra orizzontalmente i figli
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
 
                     if (!isTransmitting) {
-                        // --- FASE 1: ISTRUZIONI ---
                         Text(
-                            text = "Ritiro PowerBank",
+                            text = if (timeLeftMillis > 0) "Ritiro PowerBank" else "Tempo Scaduto",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
-                            color = TextBlack,
-                            textAlign = TextAlign.Center // Centratura Testo
+                            color = if (timeLeftMillis > 0) TextBlack else ErrorColor,
+                            textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            text = "Avvicina il telefono alla stazione e premi il pulsante qui sotto.",
-                            textAlign = TextAlign.Center, // Centratura Testo
+                            text = if (timeLeftMillis > 0)
+                                "Avvicina il telefono alla stazione e premi il pulsante qui sotto."
+                            else "Il tempo per il ritiro è terminato. Annulla la prenotazione per liberare lo slot.",
+                            textAlign = TextAlign.Center,
                             color = TextGray
                         )
                         Spacer(Modifier.height(32.dp))
 
+                        // --- BOTTONE MODIFICATO ---
                         Button(
                             onClick = {
-                                isTransmitting = true
-                                scope.launch {
+                                if (timeLeftMillis > 0) {
+                                    // LOGICA RITIRO NORMALE
+                                    isTransmitting = true
+                                    scope.launch {
 
-                                    val sequence = "*${rental.unlock_code}#"
+                                        val sequence = "*${rental.unlock_code}#"
+                                        dtmfPlayer.playSequence(sequence) {}
+                                            onConfirm(rental)
+                                            showDialog = false
+                                            isTransmitting = false
 
-                                    dtmfPlayer.playSequence(sequence) {}
-                                        onConfirm(rental)
-                                        showDialog = false
-                                        isTransmitting = false
-
+                                    }
+                                } else {
+                                    // LOGICA CANCELLAZIONE (SCADUTO)
+                                    onCancel(rental)
+                                    showDialog = false
                                 }
                             },
-                            enabled = timeLeftMillis > 0,
+                            // Sempre abilitato (tranne durante trasmissione suono)
+                            enabled = !isTransmitting,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(56.dp),
                             shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PowerGreen)
+                            colors = ButtonDefaults.buttonColors(
+                                // VERDE se attivo, ROSSO se scaduto
+                                containerColor = if (timeLeftMillis > 0) PowerGreen else ErrorColor
+                            )
                         ) {
                             Text(
-                                text = if (timeLeftMillis > 0) "RITIRA ORA" else "SCADUTO",
+                                text = if (timeLeftMillis > 0) "RITIRA ORA" else "SCADUTO - ANNULLA",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
 
+                        // Tasto Annulla secondario (Mostralo solo se c'è ancora tempo,
+                        // perché se è scaduto il tasto principale fa già da annulla)
                         if (timeLeftMillis > 0) {
                             Spacer(Modifier.height(16.dp))
                             TextButton(onClick = { onCancel(rental) }) {
@@ -207,47 +226,20 @@ fun MultiRentalTimerCard(
                         }
 
                     } else {
-                        // --- FASE 2: TRASMISSIONE (ONDE) ---
-                        // Centratura forzata di tutto il blocco
-
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.size(150.dp) // Box quadrato per centrare l'animazione
-                        ) {
+                        // ... (Parte Onde Sonar identica a prima) ...
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
                             PulsatingEffectTimer(color = PowerGreen)
-                            Icon(
-                                Icons.Default.VolumeUp,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(40.dp)
-                            )
+                            Icon(Icons.Default.VolumeUp, null, tint = Color.White, modifier = Modifier.size(40.dp))
                         }
-
                         Spacer(Modifier.height(24.dp))
-
-                        Text(
-                            text = "Trasmissione in corso...",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = PowerGreen,
-                            textAlign = TextAlign.Center, // <-- FONDAMENTALE PER CENTRARE IL TESTO
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Text(
-                            text = "Mantieni il telefono vicino",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextGray,
-                            textAlign = TextAlign.Center, // <-- FONDAMENTALE PER CENTRARE IL TESTO
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        Text("Apertura in corso...", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PowerGreen, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                        Text("Mantieni il telefono vicino allo slot", style = MaterialTheme.typography.bodySmall, color = TextGray, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }
         }
     }
 }
-
 // --- ANIMAZIONE RIPPLE ---
 @Composable
 fun PulsatingEffectTimer(color: Color) {

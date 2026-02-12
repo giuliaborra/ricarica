@@ -10,7 +10,6 @@ import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CreditCard
-import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
@@ -97,7 +96,7 @@ fun ModernProfilePage(
                     ProfileMenuItem(
                         icon = Icons.Outlined.Lock,
                         title = "Modifica Password",
-                        onClick = { /* Naviga a Change Password */ }
+                        onClick = { navController.navigate("edit_password") }
                     )
                 }
             }
@@ -114,7 +113,7 @@ fun ModernProfilePage(
                     ProfileMenuItem(
                         icon = Icons.Outlined.CreditCard,
                         title = "Metodo di pagamento",
-                        onClick = { /* Naviga ai pagamenti */ }
+                        onClick = { navController.navigate("payment") }
                     )
                 }
             }
