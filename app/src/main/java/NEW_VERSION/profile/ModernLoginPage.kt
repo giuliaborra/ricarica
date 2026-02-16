@@ -85,7 +85,13 @@ fun ModernLoginPage(
                 label = { Text("Email") }, leadingIcon = { Icon(Icons.Default.Email, null) },
                 singleLine = true, modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = GreenPrimary, focusedLabelColor = GreenPrimary, cursorColor = GreenPrimary, focusedTextColor = Color.Black, unfocusedTextColor = Color.Black),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = GreenPrimary,
+                    focusedLabelColor = GreenPrimary,
+                    cursorColor = GreenPrimary,
+                    focusedTextColor = TextBlack,
+                    unfocusedTextColor = TextBlack
+                ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
             )
             Spacer(modifier = Modifier.height(16.dp))
@@ -98,7 +104,12 @@ fun ModernLoginPage(
                 trailingIcon = { IconButton(onClick = { passwordVisible = !passwordVisible }) { Icon(if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null) } },
                 singleLine = true, modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = GreenPrimary, focusedLabelColor = GreenPrimary, cursorColor = GreenPrimary, focusedTextColor = Color.Black, unfocusedTextColor = Color.Black),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = GreenPrimary,
+                    focusedLabelColor = GreenPrimary,
+                    focusedTextColor = TextBlack,
+                    unfocusedTextColor = TextBlack,
+                    cursorColor = GreenPrimary),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done)
             )
 

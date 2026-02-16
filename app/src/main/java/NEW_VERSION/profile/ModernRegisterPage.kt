@@ -81,8 +81,8 @@ fun ModernRegisterPage(
                     focusedBorderColor = GreenPrimary,
                     focusedLabelColor = GreenPrimary,
                     cursorColor = GreenPrimary,
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
+                    focusedTextColor = TextBlack,
+                    unfocusedTextColor = TextBlack
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
@@ -101,8 +101,8 @@ fun ModernRegisterPage(
                     focusedBorderColor = GreenPrimary,
                     focusedLabelColor = GreenPrimary,
                     cursorColor = GreenPrimary,
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
+                    focusedTextColor = TextBlack,
+                    unfocusedTextColor = TextBlack
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
             )
@@ -127,8 +127,8 @@ fun ModernRegisterPage(
                     focusedBorderColor = GreenPrimary,
                     focusedLabelColor = GreenPrimary,
                     cursorColor = GreenPrimary,
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
+                    focusedTextColor = TextBlack,
+                    unfocusedTextColor = TextBlack
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done)
             )
