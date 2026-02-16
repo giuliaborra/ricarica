@@ -113,7 +113,6 @@ class RentalViewModel : ViewModel() {
 
                         // 4. Locker Fisico (Prenotazione)
                         childUpdates["/stations/${stationId}/lockers/${chosenLocker.id}/state"] = "RESERVED"
-                        childUpdates["/stations/${stationId}/lockers/${chosenLocker.id}/unlock_code"] = passkey
                     }
                 }
 
@@ -149,6 +148,7 @@ class RentalViewModel : ViewModel() {
             childUpdates["/rentals/${rental.rentalId}"] = null
             childUpdates["/users/${currentUser.uid}/rentals/${rental.rentalId}"] = null
             childUpdates["/stations/${rental.stationId}/rentals/${rental.rentalId}"] = null
+            childUpdates["/stations/${rental.stationId}/${rental.lockerId}/rental"] = null
 
             //tempo di inizio
 
@@ -183,7 +183,7 @@ class RentalViewModel : ViewModel() {
                 val now = System.currentTimeMillis()
 
                 // Aggiorna stato in ACTIVE ovunque
-                updates["/rentals/${rental.rentalId}/state"] = "ACTIVE"
+                //updates["/rentals/${rental.rentalId}/state"] = "ACTIVE"
                 updates["/users/${currentUser.uid}/rentals/${rental.rentalId}/state"] = "ACTIVE"
                 updates["/stations/$stationId/rentals/${rental.rentalId}/state"] = "ACTIVE"
 
@@ -192,26 +192,16 @@ class RentalViewModel : ViewModel() {
                 updates["/users/${currentUser.uid}/rentals/${rental.rentalId}/startTime"] = now
                 updates["/users/${currentUser.uid}/rentals/${rental.rentalId}/startTime"] = now
 
+                //aggiorna locker
+                updates["/stations/$stationId/lockers/${rental.lockerId}/rental"] = null
+                updates["/stations/$stationId/lockers/${rental.lockerId}/powerBankId"] = null
+                updates["/stations/$stationId/lockers/${rental.lockerId}/type"] = null
+                updates["/stations/$stationId/lockers/${rental.lockerId}/state"] = "FREE"
 
 
 
-                // Libera il locker (l'utente ha preso la batteria)
-                val lockersRef = dbRef.child("stations").child(stationId).child("lockers")
-                val snapshot = lockersRef.get().await()
 
-                for (lockerSnapshot in snapshot.children) {
-                    val storedPasskeyLong = lockerSnapshot.child("unlock_code").getValue(Long::class.java)
-                    val storedPasskey = storedPasskeyLong?.toInt()
-                    val lockerId = lockerSnapshot.key
 
-                    if (storedPasskey == rental.unlock_code && lockerId != null) {
-                        updates["/stations/$stationId/lockers/$lockerId/state"] = "FREE"
-                        updates["/stations/$stationId/lockers/$lockerId/unlock_code"] = null
-                        updates["/stations/$stationId/lockers/$lockerId/powerBankId"] = null
-                        updates["/stations/$stationId/lockers/$lockerId/type"] = null
-                        updates["/stations/$stationId/lockers/$lockerId/rental"] = null
-                    }
-                }
                 dbRef.updateChildren(updates).await()
             } catch (e: Exception) {
                 println("Errore conferma ritiro: ${e.message}")
@@ -224,13 +214,14 @@ class RentalViewModel : ViewModel() {
     // ------------------------------------------------------------------
     fun prepareReturn(
         rental: Rental,
-        onReadyToPlay: (Int, String) -> Unit, // Restituisce (CodiceDaSuonare, IDLocker)
+        onReadyToPlay: (Int) -> Unit, // Restituisce (CodiceDaSuonare, IDLocker)
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
             try {
                 // VINCOLO: Restituzione nella STESSA stazione
                 val stationId = rental.stationId
+                val currentUser = auth.currentUser ?: return@launch
                 val lockersRef = dbRef.child("stations").child(stationId).child("lockers")
                 val lockersSnapshot = lockersRef.get().await()
 
@@ -249,6 +240,7 @@ class RentalViewModel : ViewModel() {
                     return@launch
                 }
 
+
                 // 2. Genera codice per la restituzione
                 val returnCode = (1000..9999).random()
 
@@ -257,16 +249,25 @@ class RentalViewModel : ViewModel() {
                 val updates = hashMapOf<String, Any?>()
 
                 // Il locker leggerà "unlock_code". Se il microfono sente questo numero -> APRE.
-                updates["/stations/$stationId/lockers/$targetLockerId/unlock_code"] = returnCode
+                //updates["/stations/$stationId/lockers/$targetLockerId/unlock_code"] = returnCode
+                //assegno locker id
+                updates["/stations/$stationId/rentals/${rental.rentalId}/lockerId"] = targetLockerId
+                updates["/users/${currentUser.uid}/rentals/${rental.rentalId}/lockerId"] = targetLockerId
+                updates["/rentals/${rental.rentalId}/lockerId"] = targetLockerId
+
+
 
                 // Salviamo l'oggetto Rental aggiornato nel locker (per sicurezza e logica hardware)
                 val rentalForLocker = rental.copy(unlock_code = returnCode)
                 updates["/stations/$stationId/lockers/$targetLockerId/rental"] = rentalForLocker
 
+
+
+
                 dbRef.updateChildren(updates).await()
 
                 // 4. Diamo l'OK alla UI per suonare
-                onReadyToPlay(returnCode, targetLockerId)
+                onReadyToPlay(returnCode)
 
             } catch (e: Exception) {
                 onError("Errore preparazione restituzione: ${e.message}")
@@ -279,7 +280,6 @@ class RentalViewModel : ViewModel() {
     // ------------------------------------------------------------------
     fun terminateRental(
         rental: Rental,
-        targetLockerId: String, // Locker dove è stato restituito
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
@@ -322,13 +322,13 @@ class RentalViewModel : ViewModel() {
                 updates["/stations/$stationId/rentals/$rentalId/totalCost"] = totalCost
 
                 // AGGIORNAMENTO LOCKER (Diventa OCCUPIED)
-                updates["/stations/$stationId/lockers/$targetLockerId/state"] = "OCCUPIED"
-                updates["/stations/$stationId/lockers/$targetLockerId/powerBankId"] = rental.powerBankId
-                updates["/stations/$stationId/lockers/$targetLockerId/type"] = rental.type
+                updates["/stations/$stationId/lockers/${rental.lockerId}/state"] = "OCCUPIED"
+                updates["/stations/$stationId/lockers/${rental.lockerId}/powerBankId"] = rental.powerBankId
+                updates["/stations/$stationId/lockers/${rental.lockerId}/type"] = rental.type
 
                 // PULIZIA LOCKER (Rimuovi codice e rental temporaneo)
-                updates["/stations/$stationId/lockers/$targetLockerId/unlock_code"] = null
-                updates["/stations/$stationId/lockers/$targetLockerId/rental"] = null
+                updates["/stations/$stationId/lockers/${rental.lockerId}/unlock_code"] = null
+                updates["/stations/$stationId/lockers/${rental.lockerId}/rental"] = null
 
                 dbRef.updateChildren(updates).await()
                 onSuccess()
@@ -355,6 +355,69 @@ class RentalViewModel : ViewModel() {
         return Math.round(cost * 100.0) / 100.0
     }
 
+    // Mappa per tenere traccia di quali rental stiamo già ascoltando (per non mettere doppi listener)
+    private val activeWatchers = mutableMapOf<String, com.google.firebase.database.ValueEventListener>()
+
+    /**
+     * Questa funzione va chiamata APPENA viene visualizzata una card.
+     * Si aggancia al DB e reagisce ai cambiamenti di stato AUTONOMAMENTE.
+     */
+    fun watchRentalLifecycle(rentalId: String) {
+        if (activeWatchers.containsKey(rentalId)) return // Stiamo già ascoltando questo ID, non fare nulla
+
+        println("DEBUG: Inizio monitoraggio automatico per rental $rentalId")
+        val ref = dbRef.child("rentals").child(rentalId)
+
+        val listener = object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                val remoteRental = snapshot.getValue(Rental::class.java) ?: return
+                val state = remoteRental.state
+
+                // CASO 1: Arduino ha attivato il noleggio (ACTIVE)
+                // Controlliamo che startTime sia 0 per non rieseguirlo se è già partito
+                if (state == "ACTIVE" && remoteRental.startTime == 0L) {
+                    println("DEBUG: Rilevato ACTIVE da Arduino -> Eseguo confirmPickup")
+                    confirmPickup(remoteRental)
+                }
+
+                // CASO 2: Arduino ha chiuso il noleggio (COMPLETED)
+                // Controlliamo che il costo non sia ancora calcolato per evitare loop
+                if (state == "COMPLETED" && (remoteRental.totalCost == null || remoteRental.totalCost == 0.0)) {
+                    println("DEBUG: Rilevato COMPLETED da Arduino -> Eseguo terminateRental")
+
+                    // Chiamiamo la terminazione passando null come lockerId (Arduino ha già fatto il lavoro sporco)
+                    terminateRental(
+                        rental = remoteRental,
+                        onSuccess = {
+                            println("DEBUG: Noleggio chiuso e archiviato con successo.")
+                            // Ora possiamo smettere di ascoltare questo noleggio
+                            ref.removeEventListener(this)
+                            activeWatchers.remove(rentalId)
+                        },
+                        onError = { println("ERRORE chiusura automatica: $it") }
+                    )
+                }
+            }
+
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                println("Errore watcher: ${error.message}")
+            }
+        }
+
+        // Attiviamo il listener e salviamolo in memoria
+        ref.addValueEventListener(listener)
+        activeWatchers[rentalId] = listener
+    }
+
+    // Ricordati di pulire i listener quando il ViewModel muore (opzionale ma buona pratica)
+    override fun onCleared() {
+        super.onCleared()
+        activeWatchers.forEach { (id, listener) ->
+            dbRef.child("rentals").child(id).removeEventListener(listener)
+        }
+    }
+
     // Classe di appoggio
     data class TempLocker(val id: String, val type: String, val pbId: String?)
 }
+

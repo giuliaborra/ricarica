@@ -26,6 +26,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.ricarica.DtmfPlayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import watchRentalStatus
 import java.util.concurrent.TimeUnit
 
 // --- COLORI ---
@@ -76,6 +77,31 @@ fun MultiRentalTimerCard(
     val secondsLeft = TimeUnit.MILLISECONDS.toSeconds(timeLeftMillis) % 60
     val timeString = String.format("%02d:%02d", minutesLeft, secondsLeft)
     val barColor = if (minutesLeft > 5) PowerGreen else ErrorColor
+
+    // ... all'interno di MultiRentalTimerCard, prima del layout ...
+
+    val currentRental = rentals.firstOrNull()
+
+    DisposableEffect(currentRental?.rentalId) {
+        val rentalId = currentRental?.rentalId
+        if (rentalId != null) {
+            val ref = com.google.firebase.database.FirebaseDatabase.getInstance()
+                .getReference("rentals/$rentalId/state")
+
+            val listener = object : com.google.firebase.database.ValueEventListener {
+                override fun onDataChange(s: com.google.firebase.database.DataSnapshot) {
+                    if (s.getValue(String::class.java) == "ACTIVE") {
+                        onConfirm(currentRental)
+                    }
+                }
+                override fun onCancelled(e: com.google.firebase.database.DatabaseError) {}
+            }
+            ref.addValueEventListener(listener)
+            onDispose { ref.removeEventListener(listener) }
+        } else {
+            onDispose { }
+        }
+    }
 
     // --- CARD COMPATTA ---
     Card(
@@ -187,7 +213,7 @@ fun MultiRentalTimerCard(
 
                                         val sequence = "*${rental.unlock_code}#"
                                         dtmfPlayer.playSequence(sequence) {}
-                                            onConfirm(rental)
+                                        //watchRentalStatus(rental.rentalId, { onConfirm(rental) })
                                             showDialog = false
                                             isTransmitting = false
 

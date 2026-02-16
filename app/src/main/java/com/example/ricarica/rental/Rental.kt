@@ -11,7 +11,7 @@ data class Rental(
     val userId: String = "",
     val stationId: String = "",
     val powerBankId: String? = "",
-    val lockerId: String = "",
+    var lockerId: String? = null,
     val type: String = "",
     val totalCost: Double?=null,
     // Esempio nel DB: { "Basic": 1, "Fast": 2 }

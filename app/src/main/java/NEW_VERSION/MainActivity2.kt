@@ -109,7 +109,8 @@ fun SomeApp() {
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                BottomNavBar(navController = navController)
+                BottomNavBar(navController = navController, isGuest = isGuestMode.value,
+                    { navController.navigate("login") })
             }
         }
     ) { innerPadding ->

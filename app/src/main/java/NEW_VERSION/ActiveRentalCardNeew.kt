@@ -86,9 +86,15 @@ fun ModernActiveRentalCard(
     val minutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis)
     val cost = minutes * powerBankStrategy.pricePerMinute
 
+    LaunchedEffect(rental.rentalId) {
+        rentalViewModel.watchRentalLifecycle(rental.rentalId)
+    }
+
     // --- CARD PRINCIPALE ---
     Card(
-        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground)
@@ -97,7 +103,9 @@ fun ModernActiveRentalCard(
             // Header
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier.size(48.dp).background(PowerGreen.copy(alpha = 0.1f), CircleShape),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(PowerGreen.copy(alpha = 0.1f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.ElectricBolt, null, tint = PowerGreen, modifier = Modifier.size(24.dp))
@@ -115,11 +123,17 @@ fun ModernActiveRentalCard(
 
             // Info Block (Centrato con pesi)
             Row(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(LightUiBg).padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(LightUiBg)
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 EnhancedDataBlock(Icons.Default.Timer, formatDuration(durationMillis), "Tempo", PowerOrange, Modifier.weight(1f))
-                Divider(color = Color.Gray.copy(0.2f), modifier = Modifier.height(40.dp).width(1.dp))
+                Divider(color = Color.Gray.copy(0.2f), modifier = Modifier
+                    .height(40.dp)
+                    .width(1.dp))
                 EnhancedDataBlock(Icons.Default.Euro, "%.2f€".format(cost), "Costo", TextBlack, Modifier.weight(1f))
             }
 
@@ -134,9 +148,8 @@ fun ModernActiveRentalCard(
 
                     rentalViewModel.prepareReturn(
                         rental = rental,
-                        onReadyToPlay = { code, lockerId ->
+                        onReadyToPlay = { code ->
                             returnCode = code
-                            targetLockerId = lockerId
                             currentState = ReturnState.READY_TO_OPEN
                         },
                         onError = {
@@ -145,7 +158,9 @@ fun ModernActiveRentalCard(
                         }
                     )
                 },
-                modifier = Modifier.fillMaxWidth().height(54.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ErrorColor)
             ) {
@@ -163,13 +178,17 @@ fun ModernActiveRentalCard(
             properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
         ) {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -195,24 +214,11 @@ fun ModernActiveRentalCard(
                                         val sequence = "#$returnCode*"
                                         dtmfPlayer.playSequence(sequence) {}
 
-                                            rentalViewModel.terminateRental(
-                                                rental = rental,
-                                                targetLockerId = targetLockerId,
-                                                onSuccess = {
-                                                    showDialog = false
-                                                    currentState = ReturnState.IDLE
-                                                },
-                                                onError = {
-                                                    errorMessage = it
-                                                    currentState = ReturnState.READY_TO_OPEN
-                                                }
-                                            )
-
-
-
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth().height(60.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(60.dp),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = PowerGreen)
                             ) {
@@ -261,8 +267,12 @@ private fun PulsatingEffect(color: Color) {
         animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Restart)
     )
 
-    Box(modifier = Modifier.size(80.dp).background(color, CircleShape))
-    Canvas(modifier = Modifier.size(80.dp).scale(scale)) {
+    Box(modifier = Modifier
+        .size(80.dp)
+        .background(color, CircleShape))
+    Canvas(modifier = Modifier
+        .size(80.dp)
+        .scale(scale)) {
         drawCircle(color = color.copy(alpha = alpha), radius = size.minDimension / 2)
     }
 }

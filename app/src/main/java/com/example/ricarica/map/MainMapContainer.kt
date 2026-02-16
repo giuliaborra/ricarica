@@ -16,15 +16,16 @@ fun MainMapContainer(
 ) {
     val torino = LatLng(45.0703, 7.6869)
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(torino, 12f)
+        position = CameraPosition.fromLatLngZoom(torino, 14f)
     }
 
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding, // Importante per non coprire i loghi Google con la sheet
+        contentPadding = contentPadding,
         cameraPositionState = cameraPositionState,
         uiSettings = MapUiSettings(
-            zoomControlsEnabled = false, // Spesso rimosse per un look più moderno
+
+            zoomControlsEnabled = true,
             myLocationButtonEnabled = true
         )
     ) {
@@ -35,7 +36,7 @@ fun MainMapContainer(
                 title = item.station.name,
                 onClick = {
                     onMarkerClick(item)
-                    true // "Consuma" il click così la camera non si sposta da sola
+                    true
                 }
             )
         }

@@ -4,7 +4,6 @@ sealed class PowerBank(
     val title: String,
     val features: List<String>,
     val pricePerMinute: Double, // Prezzo al minuto
-    val deposit: Double,        // Cauzione
     val maxDailyPrice: Double   // Prezzo massimo per 24h (opzionale ma consigliato)
 ) {
     // 1. BASIC: Economico, per chi non ha fretta
@@ -16,7 +15,6 @@ sealed class PowerBank(
             "Ideale per smartphone"
         ),
         pricePerMinute = 0.01, // 60 cent all'ora
-        deposit = 10.00,
         maxDailyPrice = 5.00
     )
 
@@ -29,7 +27,6 @@ sealed class PowerBank(
             "50% di batteria in 30 min"
         ),
         pricePerMinute = 0.03, // 1.80€ all'ora
-        deposit = 20.00,
         maxDailyPrice = 10.00
     )
 
@@ -42,7 +39,6 @@ sealed class PowerBank(
             "Display digitale LCD"
         ),
         pricePerMinute = 0.05, // 3.00€ all'ora
-        deposit = 50.00,
         maxDailyPrice = 15.00
     )
 }

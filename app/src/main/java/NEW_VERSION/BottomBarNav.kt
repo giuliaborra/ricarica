@@ -1,47 +1,49 @@
 package NEW_VERSION
+
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.ElectricBolt
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.ElectricBolt
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.ViewList
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 
-// Definizione degli elementi della barra
+// Assicurati che il tuo sealed class abbia tutti gli elementi
 sealed class BottomNavItem(var title: String, var iconFilled: ImageVector, var iconOutlined: ImageVector, var route: String) {
     object Map : BottomNavItem("Mappa", Icons.Filled.Map, Icons.Outlined.Map, "home")
-    object Rentals : BottomNavItem("Noleggi", Icons.Filled.ElectricBolt, Icons.Outlined.ElectricBolt, "rentals_list") // Rotta ipotetica per la lista noleggi
-    object Catalog : BottomNavItem("Catalogo", Icons.Filled.ViewList, Icons.Outlined.ViewList, "catalog")
+    object Rentals : BottomNavItem("Noleggi", Icons.Filled.ElectricBolt, Icons.Outlined.ElectricBolt, "rentals_list")
+    object History : BottomNavItem("Catalogo", Icons.Filled.Dashboard, Icons.Outlined.Dashboard, "catalog") // Aggiungi se manca
     object Profile : BottomNavItem("Profilo", Icons.Filled.Person, Icons.Outlined.Person, "profile")
 }
 
 @Composable
-fun BottomNavBar(navController: NavController) {
+fun BottomNavBar(
+    navController: NavController,
+    isGuest: Boolean,            // <--- 1. NUOVO PARAMETRO
+    onLoginRequest: () -> Unit   // <--- 2. NUOVO PARAMETRO (Callback per il login)
+) {
     val items = listOf(
         BottomNavItem.Map,
-        BottomNavItem.Rentals, // Manteniamo Rentals come da screenshot
-        BottomNavItem.Catalog,
+        BottomNavItem.Rentals,
+        BottomNavItem.History,
         BottomNavItem.Profile
     )
 
+    // Stato per mostrare il popup
+    var showGuestDialog by remember { mutableStateOf(false) }
+
     NavigationBar(
-        containerColor = Color.White, // Sfondo bianco come nello screenshot
-        contentColor = Color.Black,
-        tonalElevation = 8.dp // Leggera ombra
+        containerColor = Color.White
     ) {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
@@ -59,24 +61,55 @@ fun BottomNavBar(navController: NavController) {
                 label = { Text(text = item.title) },
                 selected = isSelected,
                 onClick = {
-                    // Evita di ricaricare la stessa pagina se ci sei già
-                    if (currentRoute != item.route) {
-                        navController.navigate(item.route) {
-                            // Pulisce lo stack per evitare accumulo di schermate
-                            popUpTo("home") { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                    // --- 3. LOGICA DI CONTROLLO ---
+                    if (item == BottomNavItem.Profile && isGuest) {
+                        // Se è Profilo ED è Ospite -> Mostra Dialog, NON navigare
+                        showGuestDialog = true
+                    } else {
+                        // Comportamento standard: Naviga
+                        if (currentRoute != item.route) {
+                            navController.navigate(item.route) {
+                                popUpTo("home") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Color(0xFF2E7D32), // Verde scuro (stile PowerShare)
+                    selectedIconColor = Color(0xFF2E7D32),
                     selectedTextColor = Color(0xFF2E7D32),
-                    indicatorColor = Color(0xFFE8F5E9), // Sfondo verdino chiaro selezione
+                    indicatorColor = Color(0xFFE8F5E9),
                     unselectedIconColor = Color.Gray,
                     unselectedTextColor = Color.Gray
                 )
             )
         }
+    }
+
+    // --- 4. IL DIALOG POPUP ---
+    if (showGuestDialog) {
+        AlertDialog(
+            onDismissRequest = { showGuestDialog = false },
+            title = { Text("Accesso Richiesto") },
+            text = { Text("Per visualizzare il tuo profilo, gestire i pagamenti e modificare la password devi accedere o registrarti.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showGuestDialog = false
+                        onLoginRequest() // Porta alla pagina di Login
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                ) {
+                    Text("Accedi")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGuestDialog = false }) {
+                    Text("Chiudi", color = Color.Gray)
+                }
+            },
+            containerColor = Color.White
+        )
     }
 }

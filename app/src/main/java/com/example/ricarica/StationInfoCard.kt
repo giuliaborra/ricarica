@@ -59,10 +59,10 @@ fun StationInfoCard(
         modifier = Modifier
             .fillMaxWidth()
             // Rimuovi il padding orizzontale se vuoi che tocchi i bordi, o lascialo per effetto "floating"
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(24.dp) // Più rotondo
+        shape = RoundedCornerShape(20.dp) // Più rotondo
     ) {
         Column(
             modifier = Modifier
@@ -237,7 +237,8 @@ fun StationInfoCardPartially(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp),
+            //.padding(top = 2.dp),
+            ,
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -245,8 +246,8 @@ fun StationInfoCardPartially(
             icon = Icons.Default.BatteryChargingFull,
             count = powerBanksAvailable,
             label = "DISPONIBILI",
-            mainColor = Color.White,
-            bgColor = Color(0xFF2E7D32),
+            mainColor = Color.Black,
+            bgColor = Color.White
 
 
         )
@@ -262,8 +263,8 @@ fun StationInfoCardPartially(
             icon = Icons.Default.Input,
             count = emptySlotsAvailable,
             label = "POSTI LIBERI",
-            mainColor = Color.White,
-            bgColor = Color(0xFFEF6C00) // Arancione
+            mainColor = Color.Black,
+            bgColor = Color.White
         )
     }
 }

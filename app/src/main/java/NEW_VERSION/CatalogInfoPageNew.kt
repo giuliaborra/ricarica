@@ -158,14 +158,12 @@ fun PowerBankCard(pb: PowerBank) {
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+
                 Column(horizontalAlignment = Alignment.Start) {
-                    Text(text = "Cauzione", fontSize = 12.sp, color = TextGray)
-                    Text(
-                        text = "€${String.format("%.2f", pb.deposit)}",
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextBlack
-                    )
+
                 }
+
+
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(text = "Max Giornaliero", fontSize = 12.sp, color = TextGray)

@@ -106,6 +106,7 @@ fun InfoCardPB(powerBank: PowerBank) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                /*
                 Column {
                     Text(
                         "Cauzione:",
@@ -118,6 +119,8 @@ fun InfoCardPB(powerBank: PowerBank) {
                         fontWeight = FontWeight.Bold
                     )
                 }
+
+                 */
 
                 // Divisore verticale
                 VerticalDivider(
