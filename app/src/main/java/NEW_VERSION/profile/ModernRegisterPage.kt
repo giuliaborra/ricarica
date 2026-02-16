@@ -80,7 +80,9 @@ fun ModernRegisterPage(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = GreenPrimary,
                     focusedLabelColor = GreenPrimary,
-                    cursorColor = GreenPrimary
+                    cursorColor = GreenPrimary,
+                    focusedTextColor = TextBlack,
+                    unfocusedTextColor = TextBlack
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
@@ -98,7 +100,9 @@ fun ModernRegisterPage(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = GreenPrimary,
                     focusedLabelColor = GreenPrimary,
-                    cursorColor = GreenPrimary
+                    cursorColor = GreenPrimary,
+                    focusedTextColor = TextBlack,
+                    unfocusedTextColor = TextBlack
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
             )
@@ -122,7 +126,9 @@ fun ModernRegisterPage(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = GreenPrimary,
                     focusedLabelColor = GreenPrimary,
-                    cursorColor = GreenPrimary
+                    cursorColor = GreenPrimary,
+                    focusedTextColor = TextBlack,
+                    unfocusedTextColor = TextBlack
                 ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done)
             )
