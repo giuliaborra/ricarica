@@ -72,8 +72,11 @@ fun StationInfoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = 16.dp), // Padding solo sotto, sopra c'è l'handle
+                .verticalScroll(
+                    rememberScrollState(),
+                    enabled = isExpanded,)
+                .padding(bottom = 16.dp), // Padding solo sotto, sopra c'è l'handle,
+
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
