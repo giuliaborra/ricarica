@@ -1,6 +1,6 @@
 package com.example.ricarica.map
-import MapViewModel
 
+import MapViewModel
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,8 +15,7 @@ import com.example.ricarica.data.model.StationItem
 import com.example.ricarica.rental.MultiRentalTimerCard
 import com.example.ricarica.rental.Rental
 
-private val x = Color(0xFFE8F5E9)
-// In MapScreen.kt
+// private val x = Color(0xFFE8F5E9) // Non serve più se usiamo Transparent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,27 +35,36 @@ fun MapViewModern(
 
     val scaffoldState = rememberBottomSheetScaffoldState()
 
-    // Calcolo dinamico altezza
+    // Calcolo dinamico altezza (Peek Height)
+    // Assicurati che 240.dp sia sufficiente per mostrare la "StationInfoCardPartially"
     val dynamicPeekHeight = when (uiState) {
         is MapSheetState.Reserved -> 180.dp
-        is MapSheetState.StationInfo -> 240.dp
-        MapSheetState.Hidden -> 0.dp // Solo quando è 0 il foglio sparisce
+        is MapSheetState.StationInfo -> 230.dp
+        MapSheetState.Hidden -> 0.dp
     }
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetPeekHeight = dynamicPeekHeight,
-        sheetContainerColor = x,
+
+        // 1. IMPORTANTE: Sfondo trasparente
+        // Così si vede solo la tua Card arrotondata e non il rettangolo del foglio sotto
+        sheetContainerColor = Color.Transparent,
+
+        // 2. IMPORTANTE: Rimuovi la maniglia esterna
+        // Perché l'hai già aggiunta dentro StationInfoCard
+        sheetDragHandle = null,
+
         sheetSwipeEnabled = true,
         sheetContent = {
-            // Avvolgi tutto in un Box per gestire meglio i tocchi e l'allineamento
+            // Box contenitore trasparente
             Box(
                 modifier = Modifier.fillMaxWidth()
-                // Questo padding serve se vuoi che il contenuto non tocchi i bordi
-                // o per dare spazio alla maniglia se è fuori dalla card
             ) {
                 when (uiState) {
                     is MapSheetState.Reserved -> {
+                        // Nota: Se anche questa card deve avere la maniglia,
+                        // dovrai aggiungerla dentro MultiRentalTimerCard come hai fatto per l'altra.
                         MultiRentalTimerCard(
                             rentals = uiState.rentals,
                             onConfirm = { onConfirmRental(it) },
@@ -70,31 +78,23 @@ fun MapViewModern(
 
                         StationInfoCard(
                             station = liveStation,
-                            // Passa l'evento di chiusura anche alla card se ha una "X"
-                            onDismiss = { vm.dismissStation() },
+                            onDismiss = {
+                                vm.dismissStation()
+                                // Opzionale: se vuoi che il foglio scenda anche visivamente
+                                // coroutineScope.launch { scaffoldState.bottomSheetState.partialExpand() }
+                            },
                             onRentalSuccess = { vm.dismissStation() },
+                            // Passiamo lo stato corretto per l'espansione
                             isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded,
-
-
                         )
                     }
                     MapSheetState.Hidden -> Spacer(Modifier.height(1.dp))
                 }
             }
-        },
-        sheetDragHandle = {
-            // Mostra la maniglia solo se c'è contenuto visibile
-            if (uiState !is MapSheetState.Hidden) {
-                // Suggerimento: dai uno sfondo alla maniglia o mettila dentro le Card
-                // Altrimenti fluttua sul trasparente
-                BottomSheetDefaults.DragHandle(
-                    color = Color.LightGray // Rendila visibile
-                )
-            }
         }
     ) { paddingValues ->
 
-        // LOGICA DI CHIUSURA SULLA MAPPA
+
         MainMapContainer(
             stations = stations,
             contentPadding = paddingValues,
@@ -104,35 +104,26 @@ fun MapViewModern(
                 } else {
                     vm.onMarkerClick(station)
                 }
-            },
-
-
+            }
         )
 
-        if (showGuestDialog) {
 
+        if (showGuestDialog) {
             AlertDialog(
                 onDismissRequest = { showGuestDialog = false },
                 title = { Text("Accesso Richiesto") },
                 text = { Text("Per noleggiare un PowerBank o vedere i dettagli della stazione devi accedere o registrarti.") },
                 confirmButton = {
-                    Button(
-                        onClick = {
-                            showGuestDialog = false
-                            onLoginRequest() // Porta alla pagina di Login
-                        }
-                    ) {
-                        Text("Accedi")
-                    }
+                    Button(onClick = {
+                        showGuestDialog = false
+                        onLoginRequest()
+                    }) { Text("Accedi") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showGuestDialog = false }) {
-                        Text("Chiudi")
-                    }
+                    TextButton(onClick = { showGuestDialog = false }) { Text("Chiudi") }
                 },
-                containerColor = Color.White // Opzionale, per assicurarsi che sia leggibile
+                containerColor = Color.White
             )
         }
     }
 }
-

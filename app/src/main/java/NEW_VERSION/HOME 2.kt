@@ -39,7 +39,7 @@ fun HomePageNew(
                 stations = stations,
                 onConfirmRental = { rental -> rentalVm.confirmPickup(rental) },
                 onDeleteReserved = { rental -> rentalVm.deleteReserved(rental)  },
-                onLoginRequest = { },
+                onLoginRequest = { navController.navigate("login")},
                 isGuest = isGuest,
 
 

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Euro
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Warning // Aggiunta icona Warning
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -43,10 +44,10 @@ private val TextGray = Color(0xFF757575)
 private val LightUiBg = Color(0xFFF5F5F5)
 
 private enum class ReturnState {
-    IDLE,               // Bottone Rosso sulla card
-    PREPARING,          // Dialog: Spinner "Cerco slot..."
-    READY_TO_OPEN,      // Dialog: Bottone Verde "Apri Sportello"
-    TRANSMITTING        // Dialog: Onde Sonar "Apertura..."
+    IDLE,
+    PREPARING,
+    READY_TO_OPEN,
+    VERIFYING // <--- NUOVO STATO: Stiamo controllando se si è chiuso
 }
 
 @Composable
@@ -64,9 +65,8 @@ fun ModernActiveRentalCard(
 
     // Dati recuperati dal server
     var returnCode by remember { mutableIntStateOf(0) }
-    var targetLockerId by remember { mutableStateOf("") }
 
-    // Logica Timer e Costi
+    // Logica Timer e Costi (Invariata)
     val powerBankStrategy = remember(rental) {
         val typeKey = rental.powerBankTypes?.keys?.firstOrNull() ?: "BASIC"
         when (typeKey) {
@@ -86,15 +86,22 @@ fun ModernActiveRentalCard(
     val minutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis)
     val cost = minutes * powerBankStrategy.pricePerMinute
 
+    // Osserviamo il lifecycle del noleggio
     LaunchedEffect(rental.rentalId) {
         rentalViewModel.watchRentalLifecycle(rental.rentalId)
     }
 
-    // --- CARD PRINCIPALE ---
+    // Se lo stato diventa COMPLETED mentre il dialog è aperto, chiudiamo tutto (Successo)
+    LaunchedEffect(rental.state) {
+        if (rental.state == "COMPLETED") {
+            showDialog = false
+
+        }
+    }
+
+    // --- CARD PRINCIPALE (Invariata) ---
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .wrapContentHeight(),
+        modifier = Modifier.fillMaxWidth().wrapContentHeight(),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground)
@@ -103,9 +110,7 @@ fun ModernActiveRentalCard(
             // Header
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(PowerGreen.copy(alpha = 0.1f), CircleShape),
+                    modifier = Modifier.size(48.dp).background(PowerGreen.copy(alpha = 0.1f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.ElectricBolt, null, tint = PowerGreen, modifier = Modifier.size(24.dp))
@@ -121,25 +126,19 @@ fun ModernActiveRentalCard(
             Text("Restituire presso: Stazione ${rental.stationId}", style = MaterialTheme.typography.labelSmall, color = PowerOrange, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(24.dp))
 
-            // Info Block (Centrato con pesi)
+            // Info Block
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(LightUiBg)
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(LightUiBg).padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 EnhancedDataBlock(Icons.Default.Timer, formatDuration(durationMillis), "Tempo", PowerOrange, Modifier.weight(1f))
-                Divider(color = Color.Gray.copy(0.2f), modifier = Modifier
-                    .height(40.dp)
-                    .width(1.dp))
+                Divider(color = Color.Gray.copy(0.2f), modifier = Modifier.height(40.dp).width(1.dp))
                 EnhancedDataBlock(Icons.Default.Euro, "%.2f€".format(cost), "Costo", TextBlack, Modifier.weight(1f))
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // Bottone Termina (Apre il Dialog elevato)
+            // Bottone Termina
             Button(
                 onClick = {
                     showDialog = true
@@ -158,9 +157,7 @@ fun ModernActiveRentalCard(
                         }
                     )
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
+                modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ErrorColor)
             ) {
@@ -171,24 +168,26 @@ fun ModernActiveRentalCard(
         }
     }
 
-    // --- DIALOG MODALE (ELEVATO E CENTRATO) ---
+    // --- DIALOG MODALE ---
     if (showDialog) {
+        // Variabile locale per gestire la riproduzione audio
+        var isPlaying by remember { mutableStateOf(false) }
+
         Dialog(
-            onDismissRequest = { if (currentState != ReturnState.TRANSMITTING) showDialog = false },
+            // Impediamo di chiudere mentre sta verificando o suonando
+            onDismissRequest = {
+                if (!isPlaying && currentState != ReturnState.VERIFYING) showDialog = false
+            },
             properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
         ) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .padding(24.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -199,53 +198,109 @@ fun ModernActiveRentalCard(
                             Text("Cerco uno slot libero...", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                         }
 
-                        ReturnState.READY_TO_OPEN -> {
-                            Icon(Icons.Default.LockOpen, null, tint = PowerGreen, modifier = Modifier.size(64.dp))
+                        ReturnState.VERIFYING -> {
+                            // --- STATO DI VERIFICA DOPO IL SUONO ---
+                            CircularProgressIndicator(color = PowerOrange)
                             Spacer(Modifier.height(16.dp))
-                            Text("Slot Trovato!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-                            Text("Avvicina il telefono allo sportello vuoto e premi il pulsante.", textAlign = TextAlign.Center, color = TextGray)
+                            Text("Verifico la chiusura...", fontWeight = FontWeight.Bold, color = PowerOrange)
+
+                            // Logica di Timeout: Se dopo 8 secondi non è chiuso, diamo errore
+                            LaunchedEffect(Unit) {
+                                delay(8000) // Aspetta 8 secondi
+                                // Se siamo ancora qui, vuol dire che lo stato non è diventato COMPLETED
+                                if (rental.state != "COMPLETED") {
+                                    errorMessage = "Riconsegna non rilevata. Assicurati che il telefono sia vicino e riprova."
+                                    currentState = ReturnState.READY_TO_OPEN
+                                }
+                            }
+                        }
+
+                        ReturnState.READY_TO_OPEN -> {
+                            // --- ZONA VISIVA ---
+                            Box(
+                                modifier = Modifier.height(140.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isPlaying) {
+                                    PulsatingEffect(color = PowerGreen)
+                                    Icon(Icons.Default.VolumeUp, null, tint = Color.White, modifier = Modifier.size(40.dp))
+                                } else {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(Icons.Default.LockOpen, null, tint = PowerGreen, modifier = Modifier.size(64.dp))
+                                        Spacer(Modifier.height(16.dp))
+                                        Text("Slot Trovato!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+
+                            Text(
+                                text = if(isPlaying) "Trasmissione in corso..." else "Avvicina il telefono e premi il pulsante.",
+                                textAlign = TextAlign.Center,
+                                color = if(isPlaying) PowerGreen else TextGray,
+                                fontWeight = if(isPlaying) FontWeight.Bold else FontWeight.Normal
+                            )
 
                             Spacer(Modifier.height(32.dp))
 
+                            // --- BOTTONE UNICO (Start / Replay) ---
                             Button(
                                 onClick = {
-                                    currentState = ReturnState.TRANSMITTING
-                                    scope.launch {
-                                        val sequence = "#$returnCode*"
-                                        dtmfPlayer.playSequence(sequence) {}
+                                    if (!isPlaying) {
+                                        isPlaying = true
+                                        errorMessage = null // Reset errore precedente
+                                        scope.launch {
+                                            val sequence = "#$returnCode*"
 
+                                            // 1. Riproduci la sequenza
+                                            dtmfPlayer.playSequence(sequence) {}
+                                                // 2. Quando finisce il suono:
+                                                isPlaying = false
+                                                // 3. Passa allo stato di verifica
+                                                currentState = ReturnState.VERIFYING
+
+                                        }
                                     }
                                 },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(60.dp),
+                                enabled = !isPlaying,
+                                modifier = Modifier.fillMaxWidth().height(60.dp),
                                 shape = RoundedCornerShape(16.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = PowerGreen)
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PowerGreen,
+                                    disabledContainerColor = Color.Gray
+                                ),
                             ) {
-                                Text("APRI SPORTELLO", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                if (isPlaying) {
+                                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("INVIO SEGNALE...", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                } else {
+                                    Text("APRI SPORTELLO", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
-                        }
-
-                        ReturnState.TRANSMITTING -> {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
-                                PulsatingEffect(color = PowerGreen)
-                                Icon(Icons.Default.VolumeUp, null, tint = Color.White, modifier = Modifier.size(40.dp))
-                            }
-                            Spacer(Modifier.height(24.dp))
-                            Text("Apertura in corso...", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PowerGreen, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                            Text("Mantieni il telefono vicino allo slot", style = MaterialTheme.typography.bodySmall, color = TextGray, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                         }
                     }
 
-                    if (errorMessage != null) {
-                        Spacer(Modifier.height(16.dp))
-                        Text(errorMessage!!, color = ErrorColor, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                    // --- VISUALIZZAZIONE ERRORE (Se la verifica fallisce) ---
+                    if (errorMessage != null && currentState == ReturnState.READY_TO_OPEN) {
+                        Spacer(Modifier.height(24.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Warning, contentDescription = null, tint = ErrorColor)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = errorMessage!!,
+                                color = ErrorColor,
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
 
-                    if (currentState != ReturnState.TRANSMITTING) {
+                    if (!isPlaying && currentState != ReturnState.VERIFYING) {
                         Spacer(Modifier.height(16.dp))
                         TextButton(onClick = { showDialog = false }) {
-                            Text("Annulla", color = TextGray)
+                            Text("Chiudi", color = TextGray)
                         }
                     }
                 }
@@ -254,12 +309,14 @@ fun ModernActiveRentalCard(
     }
 }
 
+// ... Resto delle funzioni (PulsatingEffect, EnhancedDataBlock, formatDuration) rimangono uguali ...
+
 // --- ANIMAZIONE RIPPLE ---
 @Composable
 private fun PulsatingEffect(color: Color) {
     val infiniteTransition = rememberInfiniteTransition()
     val scale by infiniteTransition.animateFloat(
-        initialValue = 0.8f, targetValue = 1.4f,
+        initialValue = 0.8f, targetValue = 2.4f,
         animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Restart)
     )
     val alpha by infiniteTransition.animateFloat(

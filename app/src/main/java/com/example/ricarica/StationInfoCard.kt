@@ -1,7 +1,5 @@
 package com.example.ricarica
-
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -12,7 +10,7 @@ import androidx.compose.material.icons.filled.Input
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -25,6 +23,10 @@ import com.example.ricarica.data.model.StationItem
 import com.example.ricarica.rental.Rental
 import com.example.ricarica.rental.RentalViewModel
 import PowerBank
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Alignment
+
 
 object LockerStatus {
     const val FREE = "FREE"
@@ -33,13 +35,14 @@ object LockerStatus {
     const val BLOCKED = "BLOCKED"
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StationInfoCard(
     station: StationItem,
-    isExpanded: Boolean, // Questo arriva dal BottomSheet state
+    isExpanded: Boolean,
     rentalViewModel: RentalViewModel = viewModel(),
     onRentalSuccess: (List<Rental>) -> Unit,
-    onDismiss: () -> Unit // <--- FONDAMENTALE PER CHIUDERE IL FOGLIO
+    onDismiss: () -> Unit
 ) {
     // STATO SELEZIONE
     val selectionState = remember { mutableStateMapOf<PowerBank, Int>() }
@@ -54,29 +57,60 @@ fun StationInfoCard(
 
     val totalSelected by remember { derivedStateOf { selectionState.values.sum() } }
 
-    // CARD CONTENITORE PRINCIPALE
+    // RIMOSSO IL BottomSheetScaffold DA QUI!
+    // La card è solo il contenuto, il 'parent' (MapScreen) la renderà trascinabile.
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            // Rimuovi il padding orizzontale se vuoi che tocchi i bordi, o lascialo per effetto "floating"
+            // Se vuoi l'effetto "foglio attaccato al fondo", rimuovi il padding bottom
             .padding(horizontal = 10.dp, vertical = 8.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(20.dp) // Più rotondo
+        shape = RoundedCornerShape(20.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(bottom = 16.dp), // Padding solo sotto, sopra c'è l'handle
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // --- HEADER COMUNE (Nome Stazione + Tasto X) ---
-            // Visibile sia da chiuso che da aperto per coerenza
-            Row(
+            Box(
                 modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                // 1. TASTO X
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd) // Lo fissa a sinistra
+                        .padding(start = 8.dp) // Un po' di margine dal bordo
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Chiudi",
+                        tint = Color.Gray
+                    )
+                }
+
+                // 2. LA MANIGLIA
+                BottomSheetDefaults.DragHandle(
+                    modifier = Modifier
+                        .padding(top = 8.dp, bottom = 8.dp)
+                        .align(Alignment.Center), // Lo fissa al centro
+                    color = Color.LightGray
+                )
+            }
+
+            // --- HEADER (Nome Stazione + Tasto X) ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp), // Padding orizzontale aggiunto qui
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -94,86 +128,81 @@ fun StationInfoCard(
                     }
                 }
 
-                // TASTO CHIUDI (La X che ti serve!)
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Chiudi",
-                        tint = Color.Gray
-                    )
-                }
+
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // --- CONTENUTO DINAMICO ---
-            if (isExpanded) {
-                // VISTA ESPANSA: LISTA SELEZIONE
-                Divider()
-                Spacer(modifier = Modifier.height(8.dp))
+            // Aggiungiamo un padding orizzontale al contenuto per non farlo toccare i bordi
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                if (isExpanded) {
+                    Divider()
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                val types = listOf(PowerBank.BASIC, PowerBank.FAST, PowerBank.PRO)
+                    val types = listOf(PowerBank.BASIC, PowerBank.FAST, PowerBank.PRO)
 
-                types.forEach { type ->
-                    val typeKey = when (type) {
-                        is PowerBank.BASIC -> "BASIC"
-                        is PowerBank.FAST -> "FAST"
-                        is PowerBank.PRO -> "PRO"
-                    }
-                    val available = counts[typeKey] ?: 0
-                    val selected = selectionState[type] ?: 0
+                    types.forEach { type ->
+                        val typeKey = when (type) {
+                            is PowerBank.BASIC -> "BASIC"
+                            is PowerBank.FAST -> "FAST"
+                            is PowerBank.PRO -> "PRO"
+                        }
+                        val available = counts[typeKey] ?: 0
+                        val selected = selectionState[type] ?: 0
 
-                    PowerBankSelectionRow(
-                        powerBank = type,
-                        availableCount = available,
-                        currentSelection = selected,
-                        onSelectionChanged = { newQty -> selectionState[type] = newQty }
-                    )
-                    Divider(modifier = Modifier.padding(vertical = 4.dp), color = Color(0xFFEEEEEE))
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = {
-                        rentalViewModel.createRental(
-                            stationId = station.id,
-                            rawSelection = selectionState,
-                            onSuccess = { rental ->
-                                selectionState.clear()
-                                onRentalSuccess(rental)
-                            },
-                            onError = { println("ERRORE: $it") },
-                            onNotLoggedIn = {}
+                        PowerBankSelectionRow(
+                            powerBank = type,
+                            availableCount = available,
+                            currentSelection = selected,
+                            onSelectionChanged = { newQty -> selectionState[type] = newQty }
                         )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF2E7D32) // Verde PowerShare
-                    ),
-                    enabled = totalSelected > 0
-                ) {
-                    Text(
-                        text = "PROCEDI AL NOLEGGIO" + if (totalSelected > 0) " ($totalSelected)" else "",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                        Divider(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            color = Color(0xFFEEEEEE)
+                        )
+                    }
 
-                // Spazio extra in fondo per evitare che la navbar copra il bottone
-                Spacer(modifier = Modifier.height(16.dp))
-            } else {
-                // VISTA RIDOTTA: SOLO STATISTICHE
-                StationInfoCardPartially(station = station)
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = {
+                            rentalViewModel.createRental(
+                                stationId = station.id,
+                                rawSelection = selectionState,
+                                onSuccess = { rental ->
+                                    selectionState.clear()
+                                    onRentalSuccess(rental)
+                                },
+                                onError = { println("ERRORE: $it") },
+                                onNotLoggedIn = {}
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2E7D32)
+                        ),
+                        enabled = totalSelected > 0
+                    ) {
+                        Text(
+                            text = "PROCEDI AL NOLEGGIO" + if (totalSelected > 0) " ($totalSelected)" else "",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                } else {
+                    StationInfoCardPartially(station = station)
+                }
             }
         }
     }
 }
 
-// --- ROW SELEZIONE (Invariata ma pulita) ---
+
 @Composable
 fun PowerBankSelectionRow(
     powerBank: PowerBank,
