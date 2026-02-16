@@ -15,7 +15,7 @@ import com.example.ricarica.data.model.StationItem
 import com.example.ricarica.rental.MultiRentalTimerCard
 import com.example.ricarica.rental.Rental
 
-
+private val x = Color(0xFFE8F5E9)
 // In MapScreen.kt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +46,7 @@ fun MapViewModern(
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetPeekHeight = dynamicPeekHeight,
-        sheetContainerColor = Color.Transparent,
+        sheetContainerColor = x,
         sheetSwipeEnabled = true,
         sheetContent = {
             // Avvolgi tutto in un Box per gestire meglio i tocchi e l'allineamento
