@@ -15,7 +15,8 @@ import com.example.ricarica.data.model.StationItem
 import com.example.ricarica.rental.MultiRentalTimerCard
 import com.example.ricarica.rental.Rental
 
-// private val x = Color(0xFFE8F5E9) // Non serve più se usiamo Transparent
+private val x = Color(0xFFE8F5E9)
+// In MapScreen.kt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,36 +36,27 @@ fun MapViewModern(
 
     val scaffoldState = rememberBottomSheetScaffoldState()
 
-    // Calcolo dinamico altezza (Peek Height)
-    // Assicurati che 240.dp sia sufficiente per mostrare la "StationInfoCardPartially"
+    // Calcolo dinamico altezza
     val dynamicPeekHeight = when (uiState) {
         is MapSheetState.Reserved -> 180.dp
-        is MapSheetState.StationInfo -> 230.dp
-        MapSheetState.Hidden -> 0.dp
+        is MapSheetState.StationInfo -> 240.dp
+        MapSheetState.Hidden -> 0.dp // Solo quando è 0 il foglio sparisce
     }
 
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetPeekHeight = dynamicPeekHeight,
-
-        // 1. IMPORTANTE: Sfondo trasparente
-        // Così si vede solo la tua Card arrotondata e non il rettangolo del foglio sotto
-        sheetContainerColor = Color.Transparent,
-
-        // 2. IMPORTANTE: Rimuovi la maniglia esterna
-        // Perché l'hai già aggiunta dentro StationInfoCard
-        sheetDragHandle = null,
-
+        sheetContainerColor = x,
         sheetSwipeEnabled = true,
         sheetContent = {
-            // Box contenitore trasparente
+            // Avvolgi tutto in un Box per gestire meglio i tocchi e l'allineamento
             Box(
                 modifier = Modifier.fillMaxWidth()
+                // Questo padding serve se vuoi che il contenuto non tocchi i bordi
+                // o per dare spazio alla maniglia se è fuori dalla card
             ) {
                 when (uiState) {
                     is MapSheetState.Reserved -> {
-                        // Nota: Se anche questa card deve avere la maniglia,
-                        // dovrai aggiungerla dentro MultiRentalTimerCard come hai fatto per l'altra.
                         MultiRentalTimerCard(
                             rentals = uiState.rentals,
                             onConfirm = { onConfirmRental(it) },
@@ -85,7 +77,8 @@ fun MapViewModern(
                             },
                             onRentalSuccess = { vm.dismissStation() },
                             // Passiamo lo stato corretto per l'espansione
-                            isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded,
+                            isExpanded = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded
+                                    || scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded
                         )
                     }
                     MapSheetState.Hidden -> Spacer(Modifier.height(1.dp))
