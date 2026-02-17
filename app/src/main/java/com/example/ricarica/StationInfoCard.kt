@@ -74,7 +74,7 @@ fun StationInfoCard(
                 .fillMaxWidth()
                 .verticalScroll(
                     rememberScrollState(),
-                    enabled = true,)
+                    enabled = isExpanded,)
                 .padding(bottom = 16.dp), // Padding solo sotto, sopra c'è l'handle,
 
             horizontalAlignment = Alignment.CenterHorizontally
@@ -99,12 +99,14 @@ fun StationInfoCard(
                 }
 
                 // 2. LA MANIGLIA
-                BottomSheetDefaults.DragHandle(
+                /*BottomSheetDefaults.DragHandle(
                     modifier = Modifier
                         .padding(top = 8.dp, bottom = 8.dp)
                         .align(Alignment.Center), // Lo fissa al centro
                     color = Color.LightGray
                 )
+
+                 */
             }
 
             // --- HEADER (Nome Stazione + Tasto X) ---
@@ -269,8 +271,8 @@ fun StationInfoCardPartially(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            //.padding(top = 2.dp),
-            ,
+        //.padding(top = 2.dp),
+        ,
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {

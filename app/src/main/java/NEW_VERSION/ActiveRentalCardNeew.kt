@@ -241,9 +241,9 @@ fun ModernActiveRentalCard(
                             // Se dopo 8 secondi lo stato non è diventato "OPEN" (gestito dal LaunchedEffect globale sopra)
                             // Allora torniamo indietro per far riprovare l'utente.
                             LaunchedEffect(Unit) {
-                                delay(8000) // 8 secondi di attesa
+                                delay(5000) // 5 secondi di attesa
                                 if (currentState == ReturnState.VERIFYING) {
-                                    errorMessage = "Apertura non rilevata. Alza il volume e riprova."
+                                    errorMessage = "Apertura non rilevata. Riprova."
                                     currentState = ReturnState.READY_TO_OPEN // <--- TORNA AL TASTO PLAY
                                 }
                             }
