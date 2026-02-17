@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlin.math.ceil
@@ -12,6 +15,45 @@ import kotlin.math.ceil
 class RentalViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
     private val dbRef = FirebaseDatabase.getInstance().reference
+
+    // --- NUOVO: VARIABILE REATTIVA PER LO STATO DEL LOCKER FISICO ---
+    private val _targetLockerStatusFisico = MutableStateFlow<String?>(null)
+    val targetLockerStatusFisico = _targetLockerStatusFisico.asStateFlow()
+
+    private var lockerListener: ValueEventListener? = null
+
+    // ------------------------------------------------------------------
+    // FUNZIONI PER OSSERVARE LO STATO FISICO DEL LOCKER (NUOVE)
+    // ------------------------------------------------------------------
+    fun watchLockerStatus(stationId: String, lockerId: String) {
+        // Rimuovi eventuali listener precedenti
+        stopWatchingLocker(stationId, lockerId)
+
+        val lockerRef = dbRef.child("stations").child(stationId).child("lockers").child(lockerId).child("stateFisico")
+
+        lockerListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                val state = snapshot.getValue(String::class.java)
+                _targetLockerStatusFisico.value = state
+                println("DEBUG: Stato Locker $lockerId cambiato in: $state")
+            }
+
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                println("Errore watcher locker: ${error.message}")
+            }
+        }
+
+        lockerRef.addValueEventListener(lockerListener!!)
+    }
+
+    fun stopWatchingLocker(stationId: String, lockerId: String) {
+        lockerListener?.let {
+            dbRef.child("stations").child(stationId).child("lockers").child(lockerId).child("stateFisico")
+                .removeEventListener(it)
+        }
+        lockerListener = null
+        _targetLockerStatusFisico.value = null
+    }
 
     // ------------------------------------------------------------------
     // 1. CREAZIONE NOLEGGIO (PRENOTAZIONE)
@@ -214,7 +256,7 @@ class RentalViewModel : ViewModel() {
     // ------------------------------------------------------------------
     fun prepareReturn(
         rental: Rental,
-        onReadyToPlay: (Int) -> Unit, // Restituisce (CodiceDaSuonare, IDLocker)
+        onReadyToPlay: (Int, String?) -> Unit,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
@@ -267,7 +309,7 @@ class RentalViewModel : ViewModel() {
                 dbRef.updateChildren(updates).await()
 
                 // 4. Diamo l'OK alla UI per suonare
-                onReadyToPlay(returnCode)
+                onReadyToPlay(returnCode, rental.lockerId)
 
             } catch (e: Exception) {
                 onError("Errore preparazione restituzione: ${e.message}")

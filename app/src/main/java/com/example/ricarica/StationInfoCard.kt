@@ -74,7 +74,7 @@ fun StationInfoCard(
                 .fillMaxWidth()
                 .verticalScroll(
                     rememberScrollState(),
-                    enabled = isExpanded,)
+                    enabled = true,)
                 .padding(bottom = 16.dp), // Padding solo sotto, sopra c'è l'handle,
 
             horizontalAlignment = Alignment.CenterHorizontally

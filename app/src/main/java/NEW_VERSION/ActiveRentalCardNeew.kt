@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.Euro
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.Warning // Aggiunta icona Warning
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,7 +49,9 @@ private enum class ReturnState {
     IDLE,
     PREPARING,
     READY_TO_OPEN,
-    VERIFYING // <--- NUOVO STATO: Stiamo controllando se si è chiuso
+    VERIFYING,   // Controllo se lo sportello si è aperto
+    DOOR_OPEN,   // Sportello aperto rilevato -> Inserire PowerBank
+    COMPLETED    // Restituzione completata
 }
 
 @Composable
@@ -58,12 +62,16 @@ fun ModernActiveRentalCard(
 ) {
     val scope = rememberCoroutineScope()
 
+    // 1. OSSERVIAMO LO STATO DEL LOCKER DAL VIEWMODEL
+    val targetLockerStatus by rentalViewModel.targetLockerStatusFisico.collectAsState()
+
+    // Variabile per memorizzare l'ID del locker assegnato per la restituzione
+    var assignedLockerId by remember { mutableStateOf<String?>(null) }
+
     // Stati UI e Dialog
     var currentState by remember { mutableStateOf(ReturnState.IDLE) }
     var showDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    // Dati recuperati dal server
     var returnCode by remember { mutableIntStateOf(0) }
 
     // Logica Timer e Costi (Invariata)
@@ -91,11 +99,29 @@ fun ModernActiveRentalCard(
         rentalViewModel.watchRentalLifecycle(rental.rentalId)
     }
 
-    // Se lo stato diventa COMPLETED mentre il dialog è aperto, chiudiamo tutto (Successo)
-    LaunchedEffect(rental.state) {
-        if (rental.state == "COMPLETED") {
-            showDialog = false
+    // --- LOGICA REATTIVA PER CAMBIO STATO AUTOMATICO ---
+    LaunchedEffect(rental.state, targetLockerStatus) {
 
+        // 1. Se lo stato diventa COMPLETED, successo totale
+        if (rental.state == "COMPLETED") {
+            currentState = ReturnState.COMPLETED
+            delay(2000) // Mostra messaggio di successo per 2 secondi
+            showDialog = false
+        }
+        // 2. Se siamo nel dialog e il locker diventa fisicamente "OPEN" (aperto da Arduino)
+        // Passiamo alla fase di inserimento (DOOR_OPEN)
+        else if (showDialog && targetLockerStatus == "OPEN") {
+            currentState = ReturnState.DOOR_OPEN
+            errorMessage = null // Rimuoviamo eventuali errori precedenti
+        }
+    }
+
+    // Pulizia quando il dialog si chiude
+    DisposableEffect(showDialog) {
+        onDispose {
+            if (!showDialog && assignedLockerId != null) {
+                rentalViewModel.stopWatchingLocker(rental.stationId, assignedLockerId!!)
+            }
         }
     }
 
@@ -147,9 +173,13 @@ fun ModernActiveRentalCard(
 
                     rentalViewModel.prepareReturn(
                         rental = rental,
-                        onReadyToPlay = { code ->
+                        onReadyToPlay = { code, lockerId -> // ORA RICEVIAMO ANCHE LOCKER ID
                             returnCode = code
+                            assignedLockerId = lockerId // Lo salviamo
                             currentState = ReturnState.READY_TO_OPEN
+
+                            // INIZIAMO SUBITO A MONITORARE QUEL LOCKER SPECIFICO
+                            rentalViewModel.watchLockerStatus(rental.stationId, rental.lockerId)
                         },
                         onError = {
                             errorMessage = it
@@ -170,13 +200,14 @@ fun ModernActiveRentalCard(
 
     // --- DIALOG MODALE ---
     if (showDialog) {
-        // Variabile locale per gestire la riproduzione audio
         var isPlaying by remember { mutableStateOf(false) }
 
         Dialog(
-            // Impediamo di chiudere mentre sta verificando o suonando
             onDismissRequest = {
-                if (!isPlaying && currentState != ReturnState.VERIFYING) showDialog = false
+                // Si può chiudere solo se non sta suonando e non sta verificando attivamente
+                if (!isPlaying && currentState != ReturnState.VERIFYING && currentState != ReturnState.DOOR_OPEN) {
+                    showDialog = false
+                }
             },
             properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
         ) {
@@ -199,24 +230,71 @@ fun ModernActiveRentalCard(
                         }
 
                         ReturnState.VERIFYING -> {
-                            // --- STATO DI VERIFICA DOPO IL SUONO ---
+                            // --- FASE 1: ATTESA APERTURA SPORTELLO ---
                             CircularProgressIndicator(color = PowerOrange)
                             Spacer(Modifier.height(16.dp))
-                            Text("Verifico la chiusura...", fontWeight = FontWeight.Bold, color = PowerOrange)
+                            Text("Ascolto scatto serratura...", fontWeight = FontWeight.Bold, color = PowerOrange)
+                            Spacer(Modifier.height(8.dp))
+                            Text("Il microfono della stazione sta elaborando il suono.", style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center, color = TextGray)
 
-                            // Logica di Timeout: Se dopo 8 secondi non è chiuso, diamo errore
+                            // *** LOGICA DI TIMEOUT E RIPROVA ***
+                            // Se dopo 8 secondi lo stato non è diventato "OPEN" (gestito dal LaunchedEffect globale sopra)
+                            // Allora torniamo indietro per far riprovare l'utente.
                             LaunchedEffect(Unit) {
-                                delay(8000) // Aspetta 8 secondi
-                                // Se siamo ancora qui, vuol dire che lo stato non è diventato COMPLETED
-                                if (rental.state != "COMPLETED") {
-                                    errorMessage = "Riconsegna non rilevata. Assicurati che il telefono sia vicino e riprova."
-                                    currentState = ReturnState.READY_TO_OPEN
+                                delay(8000) // 8 secondi di attesa
+                                if (currentState == ReturnState.VERIFYING) {
+                                    errorMessage = "Apertura non rilevata. Alza il volume e riprova."
+                                    currentState = ReturnState.READY_TO_OPEN // <--- TORNA AL TASTO PLAY
                                 }
                             }
                         }
 
+                        ReturnState.DOOR_OPEN -> {
+                            // --- FASE 2: SPORTELLO APERTO - INSERIMENTO ---
+                            Box(
+                                modifier = Modifier.size(100.dp).background(PowerGreen.copy(alpha = 0.1f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.ArrowDownward, null, tint = PowerGreen, modifier = Modifier.size(50.dp))
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            Text("Sportello Aperto!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PowerGreen)
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Inserisci il Power Bank nello slot e attendi la conferma.",
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(4.dp), color = PowerGreen)
+                        }
+
+                        ReturnState.COMPLETED -> {
+                            // --- FASE 3: SUCCESSO ---
+                            Icon(Icons.Default.CheckCircle, null, tint = PowerGreen, modifier = Modifier.size(80.dp))
+                            Spacer(Modifier.height(16.dp))
+                            Text("Restituzione Completata!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+
                         ReturnState.READY_TO_OPEN -> {
-                            // --- ZONA VISIVA ---
+                            // --- INTERFACCIA SUONO E PULSANTE ---
+
+                            // Visualizzazione Errore (se tornati indietro per timeout)
+                            if (errorMessage != null) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Warning, contentDescription = null, tint = ErrorColor)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = errorMessage!!,
+                                        color = ErrorColor,
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Spacer(Modifier.height(16.dp))
+                            }
+
                             Box(
                                 modifier = Modifier.height(140.dp),
                                 contentAlignment = Alignment.Center
@@ -228,13 +306,13 @@ fun ModernActiveRentalCard(
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(Icons.Default.LockOpen, null, tint = PowerGreen, modifier = Modifier.size(64.dp))
                                         Spacer(Modifier.height(16.dp))
-                                        Text("Slot Trovato!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                        Text("Slot Pronto", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
 
                             Text(
-                                text = if(isPlaying) "Trasmissione in corso..." else "Avvicina il telefono e premi il pulsante.",
+                                text = if(isPlaying) "Trasmissione segnale..." else "Avvicina il telefono allo slot e premi.",
                                 textAlign = TextAlign.Center,
                                 color = if(isPlaying) PowerGreen else TextGray,
                                 fontWeight = if(isPlaying) FontWeight.Bold else FontWeight.Normal
@@ -242,20 +320,16 @@ fun ModernActiveRentalCard(
 
                             Spacer(Modifier.height(32.dp))
 
-                            // --- BOTTONE UNICO (Start / Replay) ---
                             Button(
                                 onClick = {
                                     if (!isPlaying) {
                                         isPlaying = true
-                                        errorMessage = null // Reset errore precedente
+                                        errorMessage = null
                                         scope.launch {
                                             val sequence = "#$returnCode*"
-
-                                            // 1. Riproduci la sequenza
                                             dtmfPlayer.playSequence(sequence) {}
-                                                // 2. Quando finisce il suono:
+                                                // Callback fine suono
                                                 isPlaying = false
-                                                // 3. Passa allo stato di verifica
                                                 currentState = ReturnState.VERIFYING
 
                                         }
@@ -265,39 +339,24 @@ fun ModernActiveRentalCard(
                                 modifier = Modifier.fillMaxWidth().height(60.dp),
                                 shape = RoundedCornerShape(16.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = PowerGreen,
+                                    // Se c'è un errore, rendiamo il bottone Arancione per attirare attenzione, altrimenti Verde
+                                    containerColor = if(errorMessage != null) PowerOrange else PowerGreen,
                                     disabledContainerColor = Color.Gray
                                 ),
                             ) {
                                 if (isPlaying) {
                                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
                                     Spacer(Modifier.width(8.dp))
-                                    Text("INVIO SEGNALE...", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                    Text("INVIO...", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                                 } else {
-                                    Text("APRI SPORTELLO", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    Text(if(errorMessage != null) "RIPROVA APERTURA" else "APRI SPORTELLO", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     }
 
-                    // --- VISUALIZZAZIONE ERRORE (Se la verifica fallisce) ---
-                    if (errorMessage != null && currentState == ReturnState.READY_TO_OPEN) {
-                        Spacer(Modifier.height(24.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Warning, contentDescription = null, tint = ErrorColor)
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = errorMessage!!,
-                                color = ErrorColor,
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
-                    if (!isPlaying && currentState != ReturnState.VERIFYING) {
+                    // Tasto Chiudi (disponibile solo se sicuro)
+                    if (!isPlaying && currentState != ReturnState.VERIFYING && currentState != ReturnState.DOOR_OPEN && currentState != ReturnState.COMPLETED) {
                         Spacer(Modifier.height(16.dp))
                         TextButton(onClick = { showDialog = false }) {
                             Text("Chiudi", color = TextGray)
@@ -309,9 +368,7 @@ fun ModernActiveRentalCard(
     }
 }
 
-// ... Resto delle funzioni (PulsatingEffect, EnhancedDataBlock, formatDuration) rimangono uguali ...
-
-// --- ANIMAZIONE RIPPLE ---
+// ... Resto delle funzioni (PulsatingEffect, EnhancedDataBlock, formatDuration) uguali ...
 @Composable
 private fun PulsatingEffect(color: Color) {
     val infiniteTransition = rememberInfiniteTransition()
@@ -334,7 +391,6 @@ private fun PulsatingEffect(color: Color) {
     }
 }
 
-// --- UTILS UI ---
 @Composable
 fun EnhancedDataBlock(icon: ImageVector, value: String, label: String, accentColor: Color, modifier: Modifier = Modifier) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
