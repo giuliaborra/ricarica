@@ -258,7 +258,7 @@ fun ModernActiveRentalCard(
 
                         ReturnState.VERIFYING -> {
                             // --- FASE 1: ATTESA APERTURA SPORTELLO ---
-                            CircularProgressIndicator(color = PowerOrange)
+                            CircularProgressIndicator(color = PowerGreen)
                             Spacer(Modifier.height(16.dp))
                             Text("Ascolto scatto serratura...", fontWeight = FontWeight.Bold, color = PowerGreen)
                             Spacer(Modifier.height(8.dp))
