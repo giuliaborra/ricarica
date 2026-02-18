@@ -1,4 +1,4 @@
-package com.example.ricarica.profile
+package NEW_VERSION.profile
 
 import androidx.lifecycle.ViewModel
 import com.example.ricarica.dati.UserProfile
@@ -33,6 +33,12 @@ class AuthViewModel : ViewModel() {
     // Liste Noleggi
     private val _activeRentals = MutableStateFlow<List<Rental>>(emptyList())
     val activeRentals = _activeRentals.asStateFlow()
+
+    //LISTA NOLEGGI ATTIVI
+    private val _onlyActiveRentals = MutableStateFlow<List<Rental>>(value = emptyList())
+    val onlyActiveRentals = _onlyActiveRentals.asStateFlow()
+
+
 
     private val _rentalHistory = MutableStateFlow<List<Rental>>(emptyList())
     val rentalHistory = _rentalHistory.asStateFlow()
@@ -113,6 +119,11 @@ class AuthViewModel : ViewModel() {
                 _rentalHistory.value = allRentals.filter {
                     it.state == "ACTIVE" || it.state == "COMPLETED"
                 }.sortedByDescending { it.endTime ?: it.startTime }
+
+                //LISTA SOLO ATTIVI
+                _onlyActiveRentals.value = allRentals.filter {
+                    it.state == "ACTIVE"
+                }
             }
             override fun onCancelled(error: DatabaseError) {}
         }

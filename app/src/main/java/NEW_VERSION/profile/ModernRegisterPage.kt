@@ -23,7 +23,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ricarica.profile.AuthViewModel
+import NEW_VERSION.profile.AuthViewModel
 
 private val GreenPrimary = Color(0xFF2E7D32)
 private val BackgroundColor = Color(0xFFF5F5F5)

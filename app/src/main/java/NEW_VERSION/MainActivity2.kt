@@ -3,7 +3,6 @@ import NEW_VERSION.BottomNavBar
 import NEW_VERSION.EditProfilePage
 import NEW_VERSION.HomePageNew
 import NEW_VERSION.profile.ChangePasswordScreen
-import NEW_VERSION.profile.PaymentMethod
 import NEW_VERSION.profile.PaymentMethodsScreen
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,12 +20,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import com.example.ricarica.auth.ModernLoginPage
 import com.example.ricarica.auth.ModernRegisterPage
 import com.example.ricarica.home.HomeViewModel
-import com.example.ricarica.profile.AuthViewModel
+import NEW_VERSION.profile.AuthViewModel
 import com.example.ricarica.profile.ModernProfilePage
 import com.example.ricarica.rental.RentalViewModel
 import com.example.ricarica.ui.pages.HistoryPage
@@ -106,11 +104,18 @@ fun SomeApp() {
     // Mostra la barra solo nelle pagine principali, MAI in login/register
     val showBottomBar = currentRoute in listOf("home", "catalog", "profile", "rentals_list", "rental_history", "edit_profile", "edit_password", "payment")
 
+    // --- 1. RECUPERIAMO I NOLEGGI ATTIVI ---
+    val onlyActiveRental by authViewModel.onlyActiveRentals.collectAsState()
+    val onlyActiveRentals = onlyActiveRental.size
+
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                BottomNavBar(navController = navController, isGuest = isGuestMode.value,
-                    { navController.navigate("login") })
+                BottomNavBar(
+                    navController = navController,
+                    isGuest = isGuestMode.value,
+                    onLoginRequest = { navController.navigate("login") },
+                    activeRentalsCount = onlyActiveRentals)
             }
         }
     ) { innerPadding ->
@@ -120,11 +125,14 @@ fun SomeApp() {
             startDestination = startRoute,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = innerPadding.calculateTopPadding())
         ) {
 
             composable("home") {
-                HomePageNew(homeViewModel, navController, isGuest = isGuestMode.value)
+                HomePageNew(homeViewModel,
+                    navController,
+                    isGuest = isGuestMode.value,
+                    bottomPadding = innerPadding.calculateBottomPadding())
             }
 
             composable("catalog") {

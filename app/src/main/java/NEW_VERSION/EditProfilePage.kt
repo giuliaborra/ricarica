@@ -24,8 +24,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.ricarica.profile.AuthViewModel
-import com.example.ricarica.ui.theme.LightGreen
+import NEW_VERSION.profile.AuthViewModel
 
 // --- COLORI (Coerenti con il tuo tema) ---
 private val PowerRed = Color(0xFFD32F2F) // Rosso del bottone Logout

@@ -1,5 +1,4 @@
 package com.example.ricarica.rental
-
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -8,8 +7,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,23 +30,28 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.ricarica.DtmfPlayer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import watchRentalStatus
 import java.util.concurrent.TimeUnit
 
-// --- COLORI ---
+// --- COLORI STANDARD (Identici all'ActiveRentalCard) ---
 private val PowerGreen = Color(0xFF2E7D32)
+private val PowerOrange = Color(0xFFEF6C00)
 private val TextBlack = Color(0xFF1A1A1A)
 private val TextGray = Color(0xFF757575)
 private val ErrorColor = Color(0xFFB00020)
+
+private enum class PickupState {
+    READY_TO_OPEN, // Stato iniziale
+    VERIFYING,     // Ascolto serratura
+    DOOR_OPEN,     // Sportello aperto (Preleva)
+    ACTIVE         // Noleggio confermato
+}
 
 @Composable
 fun MultiRentalTimerCard(
     rentals: List<Rental>,
     onConfirm: (Rental) -> Unit,
     onCancel: (Rental) -> Unit,
-    // onTimerExpired non serve più obbligatoriamente se gestisci tutto col tasto,
-    // ma puoi lasciarlo vuoto nel MapScreen se non vuoi cambiare quel file.
-    onTimerExpired: (Rental) -> Unit
+    rentalViewModel: RentalViewModel
 ) {
     val rental = rentals.firstOrNull() ?: return
     val scope = rememberCoroutineScope()
@@ -52,8 +61,15 @@ fun MultiRentalTimerCard(
         onDispose { dtmfPlayer.release() }
     }
 
+    // --- DATI LIVE ---
+    val targetLockerStatus by rentalViewModel.targetLockerStatusFisico.collectAsState()
+    val realTimeRentalState by rentalViewModel.returnRentalState.collectAsState()
+
+    // --- STATI UI ---
     var showDialog by remember { mutableStateOf(false) }
-    var isTransmitting by remember { mutableStateOf(false) }
+    var currentState by remember { mutableStateOf(PickupState.READY_TO_OPEN) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isPlaying by remember { mutableStateOf(false) }
 
     // --- TIMER 20 MINUTI ---
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -67,10 +83,6 @@ fun MultiRentalTimerCard(
     val maxTimeMillis = 20 * 60 * 1000L
     val elapsedTime = currentTime - (rental.startTime ?: currentTime)
     val timeLeftMillis = (maxTimeMillis - elapsedTime).coerceAtLeast(0L)
-
-    // NOTA: HO RIMOSSO LA LOGICA "if (timeLeftMillis <= 0) onTimerExpired"
-    // Ora la cancellazione è manuale tramite il bottone.
-
     val progress = (timeLeftMillis.toFloat() / maxTimeMillis.toFloat()).coerceIn(0f, 1f)
 
     val minutesLeft = TimeUnit.MILLISECONDS.toMinutes(timeLeftMillis)
@@ -78,37 +90,52 @@ fun MultiRentalTimerCard(
     val timeString = String.format("%02d:%02d", minutesLeft, secondsLeft)
     val barColor = if (minutesLeft > 5) PowerGreen else ErrorColor
 
-    // ... all'interno di MultiRentalTimerCard, prima del layout ...
 
-    val currentRental = rentals.firstOrNull()
+    LaunchedEffect(realTimeRentalState, targetLockerStatus) {
+        // 1. Successo Totale: Noleggio diventato ACTIVE
+        if (realTimeRentalState == "ACTIVE") {
+            currentState = PickupState.ACTIVE
+            delay(2000)
+            showDialog = false
 
-    DisposableEffect(currentRental?.rentalId) {
-        val rentalId = currentRental?.rentalId
-        if (rentalId != null) {
-            val ref = com.google.firebase.database.FirebaseDatabase.getInstance()
-                .getReference("rentals/$rentalId/state")
-
-            val listener = object : com.google.firebase.database.ValueEventListener {
-                override fun onDataChange(s: com.google.firebase.database.DataSnapshot) {
-                    if (s.getValue(String::class.java) == "ACTIVE") {
-                        onConfirm(currentRental)
-                    }
-                }
-                override fun onCancelled(e: com.google.firebase.database.DatabaseError) {}
-            }
-            ref.addValueEventListener(listener)
-            onDispose { ref.removeEventListener(listener) }
-        } else {
-            onDispose { }
+        }
+        // 2. Successo Parziale: Sportello aperto
+        else if (showDialog && targetLockerStatus == "OPEN" && currentState != PickupState.ACTIVE) {
+            currentState = PickupState.DOOR_OPEN
+            errorMessage = null
         }
     }
 
-    // --- CARD COMPATTA ---
+    // Osserviamo il lifecycle del noleggio
+    LaunchedEffect(rental.rentalId) {
+        rentalViewModel.watchRentalLifecycle(rental.rentalId, rental.stationId, rental.lockerId)
+    }
+
+    // Pulizia
+    DisposableEffect(showDialog) {
+        onDispose {
+            if (!showDialog) {
+                rentalViewModel.stopWatchingLocker(rental.stationId, rental.lockerId)
+
+                // Reset stati
+                currentState = PickupState.READY_TO_OPEN
+                errorMessage = null
+                isPlaying = false
+            }
+        }
+    }
+
+    // --- CARD DI ANTEPRIMA (Timer) ---
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
-            .clickable { showDialog = true },
+            .clickable {
+                showDialog = true
+                // Inizia il monitoraggio appena apri il popup
+                rentalViewModel.watchLockerStatus(rental.stationId, rental.lockerId)
+
+            },
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
@@ -160,145 +187,209 @@ fun MultiRentalTimerCard(
         }
     }
 
-    // --- DIALOG MODALE ---
+    // --- POPUP UNIFORMATO ---
     if (showDialog) {
         Dialog(
-            onDismissRequest = { if (!isTransmitting) showDialog = false },
-            properties = DialogProperties(
-                dismissOnBackPress = !isTransmitting,
-                dismissOnClickOutside = !isTransmitting
-            )
+            onDismissRequest = {
+                // Non chiudere se sta lavorando
+                if (!isPlaying && currentState != PickupState.VERIFYING && currentState != PickupState.DOOR_OPEN) {
+                    showDialog = false
+                }
+            },
+            properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false)
         ) {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
             ) {
                 Column(
-                    modifier = Modifier
-                        .padding(24.dp)
-                        .fillMaxWidth(),
+                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
 
-                    if (!isTransmitting) {
-                        Text(
-                            text = if (timeLeftMillis > 0) "Ritiro PowerBank" else "Tempo Scaduto",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (timeLeftMillis > 0) TextBlack else ErrorColor,
-                            textAlign = TextAlign.Center
-                        )
+                    // CASO 1: TEMPO SCADUTO (Logica speciale)
+                    if (timeLeftMillis <= 0) {
+                        Text("Tempo Scaduto", style = MaterialTheme.typography.headlineSmall, color = ErrorColor, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(16.dp))
-                        Text(
-                            text = if (timeLeftMillis > 0)
-                                "Avvicina il telefono alla stazione e premi il pulsante qui sotto."
-                            else "Il tempo per il ritiro è terminato. Annulla la prenotazione per liberare lo slot.",
-                            textAlign = TextAlign.Center,
-                            color = TextGray
-                        )
+                        Text("Il tempo per il ritiro è terminato. Annulla la prenotazione.", textAlign = TextAlign.Center, color = TextGray)
                         Spacer(Modifier.height(32.dp))
-
-                        // --- BOTTONE MODIFICATO ---
                         Button(
-                            onClick = {
-                                if (timeLeftMillis > 0) {
-                                    // LOGICA RITIRO NORMALE
-                                    isTransmitting = true
-                                    scope.launch {
-
-                                        val sequence = "*${rental.unlock_code}#"
-                                        dtmfPlayer.playSequence(sequence) {}
-                                        //watchRentalStatus(rental.rentalId, { onConfirm(rental) })
-                                            showDialog = false
-                                            isTransmitting = false
-
-                                    }
-                                } else {
-                                    // LOGICA CANCELLAZIONE (SCADUTO)
-                                    onCancel(rental)
-                                    showDialog = false
-                                }
-                            },
-                            // Sempre abilitato (tranne durante trasmissione suono)
-                            enabled = !isTransmitting,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                // VERDE se attivo, ROSSO se scaduto
-                                containerColor = if (timeLeftMillis > 0) PowerGreen else ErrorColor
-                            )
+                            onClick = { onCancel(rental); showDialog = false },
+                            colors = ButtonDefaults.buttonColors(containerColor = ErrorColor),
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(16.dp)
                         ) {
-                            Text(
-                                text = if (timeLeftMillis > 0) "RITIRA ORA" else "SCADUTO - ANNULLA",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text("ANNULLA PRENOTAZIONE", fontWeight = FontWeight.Bold)
                         }
+                    }
+                    // CASO 2: FLUSSO NORMALE (Identico a ActiveRentalCard)
+                    else {
+                        when (currentState) {
 
-                        // Tasto Annulla secondario (Mostralo solo se c'è ancora tempo,
-                        // perché se è scaduto il tasto principale fa già da annulla)
-                        if (timeLeftMillis > 0) {
-                            Spacer(Modifier.height(16.dp))
-                            TextButton(onClick = { onCancel(rental) }) {
-                                Text("Annulla Prenotazione", color = TextGray)
+                            // --- FASE 1: PRONTO ---
+                            PickupState.READY_TO_OPEN -> {
+                                val isErrorState = errorMessage != null
+                                val stateColor = if (isErrorState) PowerOrange else PowerGreen
+
+                                // Blocco Icona Grande
+                                Box(
+                                    modifier = Modifier
+                                        .size(160.dp) // Dimensione unificata
+                                        .background(stateColor.copy(alpha = 0.1f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isPlaying) {
+                                        PulsatingEffectTimer(color = stateColor)
+                                        // IMPORTANTE: Bianco su sfondo colorato pieno
+                                        Icon(Icons.Default.VolumeUp, null, tint = Color.White, modifier = Modifier.size(50.dp))
+                                    } else {
+                                        Icon(
+                                            if (isErrorState) Icons.Default.Warning else Icons.Default.LockOpen,
+                                            null, tint = stateColor, modifier = Modifier.size(60.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(Modifier.height(24.dp))
+                                Text(
+                                    if (isPlaying) "Invio segnale..." else if (isErrorState) "Apertura fallita" else "Slot Pronto",
+                                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextBlack
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    if (isPlaying) "Tieni il telefono vicino allo slot"
+                                    else if (isErrorState) "Non abbiamo sentito lo scatto.\nAlza il volume e riprova."
+                                    else "Avvicina il telefono allo slot e premi il pulsante.",
+                                    textAlign = TextAlign.Center, color = TextGray
+                                )
+
+                                Spacer(Modifier.height(32.dp))
+
+                                // Bottone Azione
+                                Button(
+                                    onClick = {
+                                        if (!isPlaying) {
+                                            isPlaying = true
+                                            errorMessage = null
+                                            scope.launch {
+                                                val sequence = "*${rental.unlock_code}#"
+                                                dtmfPlayer.playSequence(sequence) {}
+                                                    isPlaying = false
+                                                    // Controllo Immediato
+                                                    if (targetLockerStatus == "OPEN") {
+                                                        currentState = PickupState.DOOR_OPEN
+                                                    } else {
+                                                        currentState = PickupState.VERIFYING
+
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !isPlaying,
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = PowerGreen),
+                                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
+                                ) {
+                                    if (isPlaying) {
+                                        /*
+                                        CircularProgressIndicator(
+                                            color = Color.White,
+                                            strokeWidth = 3.dp,
+                                            modifier = Modifier.size(24.dp)
+                                        )*/
+                                        //Spacer(Modifier.width(12.dp))
+                                        Text("TRASMISSIONE...", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                    } else {
+                                        if (isErrorState) {
+                                            Icon(Icons.Default.Refresh, null, modifier = Modifier.size(20.dp))
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("RIPROVA APERTURA", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                        } else {
+                                            Text("RITIRA ORA", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+
+                                if (!isPlaying) {
+                                    Spacer(Modifier.height(16.dp))
+                                    TextButton(onClick = { onCancel(rental); showDialog = false }) {
+                                        Text("Annulla Prenotazione", color = TextGray)
+                                    }
+                                }
+                            }
+
+                            // --- FASE 2: VERIFICA ---
+                            PickupState.VERIFYING -> {
+                                CircularProgressIndicator(color = PowerOrange)
+                                Spacer(Modifier.height(16.dp))
+                                Text("Ascolto scatto serratura...", fontWeight = FontWeight.Bold, color = PowerGreen)
+                                Spacer(Modifier.height(8.dp))
+                                Text("Il microfono sta elaborando il suono.", style = MaterialTheme.typography.bodySmall, color = TextGray)
+
+                                LaunchedEffect(Unit) {
+                                    delay(12000) // 12 Secondi timeout
+                                    if (currentState == PickupState.VERIFYING && targetLockerStatus != "OPEN") {
+                                        errorMessage = "Apertura non rilevata. Riprova."
+                                        currentState = PickupState.READY_TO_OPEN
+                                    }
+                                }
+                            }
+
+                            // --- FASE 3: SPORTELLO APERTO ---
+                            PickupState.DOOR_OPEN -> {
+                                Box(
+                                    modifier = Modifier.size(100.dp).background(PowerGreen.copy(alpha = 0.1f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.ArrowDownward, null, tint = PowerGreen, modifier = Modifier.size(50.dp))
+                                }
+                                Spacer(Modifier.height(16.dp))
+                                Text("Sportello Aperto!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = PowerGreen)
+                                Spacer(Modifier.height(8.dp))
+                                Text("Prendi il Power Bank.\nIl noleggio partirà automaticamente.", textAlign = TextAlign.Center, color = TextGray)
+                                Spacer(Modifier.height(16.dp))
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(4.dp), color = PowerGreen)
+                            }
+
+                            // --- FASE 4: SUCCESSO ---
+                            PickupState.ACTIVE -> {
+                                Icon(Icons.Default.CheckCircle, null, tint = PowerGreen, modifier = Modifier.size(80.dp))
+                                Spacer(Modifier.height(16.dp))
+                                Text("Noleggio Avviato!", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                             }
                         }
+                    }
 
-                    } else {
-                        // ... (Parte Onde Sonar identica a prima) ...
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(150.dp)) {
-                            PulsatingEffectTimer(color = PowerGreen)
-                            Icon(Icons.Default.VolumeUp, null, tint = Color.White, modifier = Modifier.size(40.dp))
-                        }
+                    // Tasto Chiudi Emergenza
+                    if (currentState == PickupState.DOOR_OPEN) {
                         Spacer(Modifier.height(24.dp))
-                        Text("Apertura in corso...", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = PowerGreen, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-                        Text("Mantieni il telefono vicino allo slot", style = MaterialTheme.typography.bodySmall, color = TextGray, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                        TextButton(onClick = { showDialog = false }) { Text("Chiudi", color = TextGray) }
                     }
                 }
             }
         }
     }
 }
+
 // --- ANIMAZIONE RIPPLE ---
 @Composable
 fun PulsatingEffectTimer(color: Color) {
     val infiniteTransition = rememberInfiniteTransition()
-
     val scale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Restart
-        )
+        initialValue = 0.8f, targetValue = 1.4f,
+        animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Restart)
     )
-
     val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Restart
-        )
+        initialValue = 0.6f, targetValue = 0f,
+        animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Restart)
     )
-
-    Box(
-        modifier = Modifier
-            .size(80.dp)
-            .background(color, CircleShape)
-    )
-
+    Box(modifier = Modifier.size(80.dp).background(color, CircleShape))
     Canvas(modifier = Modifier.size(80.dp).scale(scale)) {
-        drawCircle(
-            color = color.copy(alpha = alpha),
-            radius = size.minDimension / 2
-        )
+        drawCircle(color = color.copy(alpha = alpha), radius = size.minDimension / 2)
     }
 }

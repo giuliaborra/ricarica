@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +45,9 @@ fun CatalogPageNew(
 
     Scaffold(
         topBar = {
-            CleanCatalogTopBar {  }
+            CleanCatalogTopBar() {
+
+            }
         },
         containerColor = BackgroundColor // Sfondo grigio chiaro
     ) { paddingValues ->
@@ -53,7 +56,8 @@ fun CatalogPageNew(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp), // Spazio laterale
+                .padding(horizontal = 16.dp)
+                ,// Spazio laterale
             verticalArrangement = Arrangement.spacedBy(16.dp), // Spazio tra le card
             contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp) // Padding extra in fondo
         ) {
@@ -184,6 +188,8 @@ fun PowerBankCard(pb: PowerBank) {
 @Composable
 fun CleanCatalogTopBar(onBack: () -> Unit) {
     CenterAlignedTopAppBar(
+
+        modifier = Modifier.shadow(4.dp),
         title = {
             Text(
                 text = "SCEGLI IL TUO POWERBANK ", // Titolo più accattivante
@@ -193,10 +199,13 @@ fun CleanCatalogTopBar(onBack: () -> Unit) {
             )
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = BackgroundColor,
-            scrolledContainerColor = BackgroundColor
+            containerColor = Color.White,
+            scrolledContainerColor = BackgroundColor,
         )
+
+
     )
+
 }
 
 // --- HELPER ICONE ---

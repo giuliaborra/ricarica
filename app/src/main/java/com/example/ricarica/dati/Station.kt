@@ -9,6 +9,7 @@ data class StationItem(
 )
 
 data class Station(
+
     val enabled: Boolean = true,
     val stationId: String = "",
     val name: String = "",

@@ -23,7 +23,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ricarica.profile.AuthViewModel
+import NEW_VERSION.profile.AuthViewModel
 
 @Composable
 fun LoginPage(

@@ -1,5 +1,6 @@
 package NEW_VERSION
 
+import androidx.compose.foundation.layout.offset
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.ElectricBolt
@@ -13,24 +14,27 @@ import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 
-// Assicurati che il tuo sealed class abbia tutti gli elementi
 sealed class BottomNavItem(var title: String, var iconFilled: ImageVector, var iconOutlined: ImageVector, var route: String) {
     object Map : BottomNavItem("Mappa", Icons.Filled.Map, Icons.Outlined.Map, "home")
     object Rentals : BottomNavItem("Noleggi", Icons.Filled.ElectricBolt, Icons.Outlined.ElectricBolt, "rentals_list")
-    object History : BottomNavItem("Catalogo", Icons.Filled.Dashboard, Icons.Outlined.Dashboard, "catalog") // Aggiungi se manca
+    object History : BottomNavItem("Catalogo", Icons.Filled.Dashboard, Icons.Outlined.Dashboard, "catalog")
     object Profile : BottomNavItem("Profilo", Icons.Filled.Person, Icons.Outlined.Person, "profile")
 }
 
+@OptIn(ExperimentalMaterial3Api::class) // Necessario per BadgedBox
 @Composable
 fun BottomNavBar(
     navController: NavController,
-    isGuest: Boolean,            // <--- 1. NUOVO PARAMETRO
-    onLoginRequest: () -> Unit   // <--- 2. NUOVO PARAMETRO (Callback per il login)
+    isGuest: Boolean,
+    activeRentalsCount: Int, // <--- 1. NUOVO PARAMETRO (Numero noleggi attivi)
+    onLoginRequest: () -> Unit
 ) {
     val items = listOf(
         BottomNavItem.Map,
@@ -39,11 +43,11 @@ fun BottomNavBar(
         BottomNavItem.Profile
     )
 
-    // Stato per mostrare il popup
     var showGuestDialog by remember { mutableStateOf(false) }
 
     NavigationBar(
-        containerColor = Color.White
+        containerColor = Color.White,
+        tonalElevation = 0.dp
     ) {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
@@ -53,20 +57,40 @@ fun BottomNavBar(
 
             NavigationBarItem(
                 icon = {
-                    Icon(
-                        imageVector = if (isSelected) item.iconFilled else item.iconOutlined,
-                        contentDescription = item.title
-                    )
+                    // --- 2. LOGICA DEL BADGE ---
+                    // Se l'item è "Noleggi" E ci sono noleggi attivi (>0), mostriamo il pallino
+                    if (item == BottomNavItem.Rentals && activeRentalsCount > 0) {
+                        BadgedBox(
+                            badge = {
+                                Badge(
+
+                                    modifier = Modifier.offset(x = 6.dp, y = (-4).dp),
+                                    containerColor = Color(0xFFD32F2F), // Rosso
+                                    contentColor = Color.White
+                                ) {
+                                    Text("$activeRentalsCount")
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = if (isSelected) item.iconFilled else item.iconOutlined,
+                                contentDescription = item.title
+                            )
+                        }
+                    } else {
+                        // Icona normale senza badge
+                        Icon(
+                            imageVector = if (isSelected) item.iconFilled else item.iconOutlined,
+                            contentDescription = item.title
+                        )
+                    }
                 },
                 label = { Text(text = item.title) },
                 selected = isSelected,
                 onClick = {
-                    // --- 3. LOGICA DI CONTROLLO ---
                     if (item == BottomNavItem.Profile && isGuest) {
-                        // Se è Profilo ED è Ospite -> Mostra Dialog, NON navigare
                         showGuestDialog = true
                     } else {
-                        // Comportamento standard: Naviga
                         if (currentRoute != item.route) {
                             navController.navigate(item.route) {
                                 popUpTo("home") { saveState = true }
@@ -87,17 +111,16 @@ fun BottomNavBar(
         }
     }
 
-    // --- 4. IL DIALOG POPUP ---
     if (showGuestDialog) {
         AlertDialog(
             onDismissRequest = { showGuestDialog = false },
             title = { Text("Accesso Richiesto") },
-            text = { Text("Per visualizzare il tuo profilo, gestire i pagamenti e modificare la password devi accedere o registrarti.") },
+            text = { Text("Per visualizzare il tuo profilo devi accedere.") },
             confirmButton = {
                 Button(
                     onClick = {
                         showGuestDialog = false
-                        onLoginRequest() // Porta alla pagina di Login
+                        onLoginRequest()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
                 ) {
@@ -105,9 +128,7 @@ fun BottomNavBar(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showGuestDialog = false }) {
-                    Text("Chiudi", color = Color.Gray)
-                }
+                TextButton(onClick = { showGuestDialog = false }) { Text("Chiudi", color = Color.Gray) }
             },
             containerColor = Color.White
         )
